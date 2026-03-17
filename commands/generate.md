@@ -2,7 +2,7 @@
 description: Generate and scaffold Claude configuration files for the current project
 ---
 
-Spawn the `claude-config-generator` subagent to create Claude Code configuration files for the current project.
+Spawn the `generator` subagent to create Claude Code configuration files for the current project.
 
 The agent will:
 1. Assess the project's tech stack and structure

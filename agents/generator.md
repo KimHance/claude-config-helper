@@ -1,5 +1,6 @@
 ---
-name: claude-config-generator
+name: generator
+color: green
 description: |
   Generates and scaffolds Claude Code configuration files. Use this agent when the user asks to create or set up Claude configs, CLAUDE.md, skills, agents, memory system, hooks, commands, or MCP settings. Examples: <example>user: "클로드 세팅 만들어줘" assistant: spawns this agent to scaffold Claude config files</example> <example>user: "CLAUDE.md 만들어줘" assistant: spawns this agent to generate a CLAUDE.md file</example> <example>user: "프로젝트 AI 세팅 초기화해줘" assistant: spawns this agent to set up Claude configuration</example> <example>user: "스킬 파일 만들어줘" assistant: spawns this agent to scaffold a skill</example> <example>user: "set up claude config for this project" assistant: spawns this agent</example>
 model: sonnet
@@ -35,7 +36,7 @@ Present the user with options:
 
 ### Step 3: Generate Files
 
-For each file type, follow the templates and best practices from the `generate-claude-config` skill.
+For each file type, follow the templates and best practices from the `generate` skill.
 
 Key principles:
 - **CLAUDE.md**: Imperative tone, actionable instructions, concise (respect context window)

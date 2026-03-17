@@ -1,5 +1,6 @@
 ---
-name: claude-config-reviewer
+name: reviewer
+color: blue
 description: |
   Reviews Claude Code configuration files for quality and best practices. Use this agent when the user asks to review Claude settings, AI configuration, CLAUDE.md quality, skill/agent definitions, memory system, hooks, or MCP setup. Examples: <example>user: "클로드 세팅 리뷰해줘" assistant: spawns this agent to scan and review all Claude config files</example> <example>user: "AI 관련 세팅 리뷰해줘" assistant: spawns this agent for comprehensive Claude configuration review</example> <example>user: "review my claude config" assistant: spawns this agent</example> <example>user: "check my agent setup" assistant: spawns this agent</example> <example>user: "클로드 파일 점검해줘" assistant: spawns this agent</example>
 model: sonnet
@@ -36,7 +37,7 @@ Discover all Claude-related files by searching these locations:
 
 ### Step 2: Review Each Category
 
-For each category where files are found, load the corresponding reference checklist from the `review-claude-config` skill's `references/` directory and evaluate.
+For each category where files are found, load the corresponding reference checklist from the `review` skill's `references/` directory and evaluate.
 
 Categories:
 1. CLAUDE.md files

@@ -1,5 +1,5 @@
 ---
-name: generate-claude-config
+name: generate
 description: Templates and best practices for generating Claude Code configuration files including CLAUDE.md, memory, skills, agents, commands, hooks, settings, and MCP setup
 ---
 

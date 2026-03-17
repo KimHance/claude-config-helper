@@ -1,4 +1,4 @@
-# claude-config-helper
+# cchelp
 
 > Claude Code 설정 파일을 리뷰하고 생성해주는 커스텀 마켓플레이스 플러그인
 
@@ -10,7 +10,7 @@ Claude Code를 사용할 때 작성하는 다양한 설정 파일들 — `CLAUDE
 
 ## Features
 
-### Review (`claude-config-reviewer`)
+### Review (`reviewer`)
 
 8개 카테고리에 대해 best practice 체크리스트 기반으로 평가하고 등급을 매겨줍니다.
 
@@ -27,7 +27,7 @@ Claude Code를 사용할 때 작성하는 다양한 설정 파일들 — `CLAUDE
 
 **Output:** 터미널 요약 테이블 + `docs/claude-config-review-report.md` 상세 리포트
 
-### Generate (`claude-config-generator`)
+### Generate (`generator`)
 
 프로젝트의 기술 스택을 분석하고, 템플릿 기반으로 Claude 설정 파일들을 생성합니다.
 
@@ -36,12 +36,12 @@ Claude Code를 사용할 때 작성하는 다양한 설정 파일들 — `CLAUDE
 - 스킬/에이전트/커맨드 스캐폴딩
 - 훅, settings, MCP 설정 생성
 
-### Setup (`setup-claude-config`)
+### Generate + Review (`gn-rv`)
 
 생성과 리뷰를 한 번에 실행하는 오케스트레이션 워크플로우입니다.
 
-1. **Generate** — `claude-config-generator`로 설정 파일 생성
-2. **Review** — `claude-config-reviewer`로 생성된 파일 품질 검증
+1. **Generate** — `generator`로 설정 파일 생성
+2. **Review** — `reviewer`로 생성된 파일 품질 검증
 3. **Fix** — Critical/Important 이슈 발견 시 자동 수정 제안
 
 ## Usage
@@ -59,9 +59,9 @@ AI 관련 세팅 리뷰해줘
 ### Slash Commands
 
 ```
-/review-claude-config    # 설정 파일 리뷰
-/generate-claude-config  # 설정 파일 생성
-/setup-claude-config     # 생성 + 리뷰 한 번에
+/review    # 설정 파일 리뷰
+/generate  # 설정 파일 생성
+/gn-rv     # 생성 + 리뷰 한 번에
 ```
 
 ## Installation
@@ -71,7 +71,7 @@ AI 관련 세팅 리뷰해줘
 ```json
 {
   "extraKnownMarketplaces": {
-    "claude-config-helper": {
+    "cchelp": {
       "source": {
         "source": "github",
         "repo": "KimHance/claude-config-helper"
@@ -79,7 +79,7 @@ AI 관련 세팅 리뷰해줘
     }
   },
   "enabledPlugins": {
-    "claude-config-helper@claude-config-helper": true
+    "cchelp@cchelp": true
   }
 }
 ```
@@ -87,19 +87,19 @@ AI 관련 세팅 리뷰해줘
 ## Plugin Structure
 
 ```
-claude-config-helper/
+cchelp/
 ├── .claude-plugin/          # Plugin & marketplace metadata
 ├── agents/
-│   ├── claude-config-reviewer.md    # Review agent
-│   └── claude-config-generator.md   # Generator agent
+│   ├── reviewer.md          # Review agent
+│   └── generator.md         # Generator agent
 ├── skills/
-│   ├── review-claude-config/        # Review checklists (8 categories)
-│   ├── generate-claude-config/      # Generation templates (8 types)
-│   └── setup-claude-config/         # Generate + Review orchestration
+│   ├── review/              # Review checklists (8 categories)
+│   ├── generate/            # Generation templates (8 types)
+│   └── gn-rv/               # Generate + Review orchestration
 ├── commands/
-│   ├── review-claude-config.md      # /review-claude-config
-│   ├── generate-claude-config.md    # /generate-claude-config
-│   └── setup-claude-config.md       # /setup-claude-config
+│   ├── review.md            # /review
+│   ├── generate.md          # /generate
+│   └── gn-rv.md             # /gn-rv
 └── CLAUDE.md
 ```
 

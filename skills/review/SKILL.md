@@ -1,5 +1,5 @@
 ---
-name: review-claude-config
+name: review
 description: Review checklist and evaluation criteria for Claude Code configuration files including CLAUDE.md, memory, skills, agents, commands, hooks, settings, and MCP setup
 ---
 
