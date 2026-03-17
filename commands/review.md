@@ -5,7 +5,7 @@ description: Review all Claude configuration files in the current project for qu
 Spawn the `reviewer` subagent to perform a comprehensive review of all Claude Code configuration files in the current project.
 
 The agent will:
-1. Scan for all Claude-related files (CLAUDE.md, memory, skills, agents, commands, hooks, settings, MCP)
+1. Scan for all Claude-related files (CLAUDE.md, memory, skills, agents, commands, hooks, MCP)
 2. Evaluate each category against best-practice checklists
 3. Cross-validate references between files
 4. Output a summary table with grades in the terminal
