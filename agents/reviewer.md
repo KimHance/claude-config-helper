@@ -22,7 +22,6 @@ Discover all Claude-related files by searching these locations:
 **Project-level:**
 - `CLAUDE.md` (project root)
 - `**/CLAUDE.md` (module-level)
-- `.claude/settings.json` (project-level committed settings only, NOT `settings.local.json`)
 - `.claude-plugin/` directory
 - `agents/*.md`
 - `skills/**/SKILL.md`
@@ -43,8 +42,7 @@ Categories:
 4. Subagent definitions
 5. Commands (slash commands)
 6. Hooks
-7. Settings (settings.json)
-8. MCP server configuration
+7. MCP server configuration
 
 If no files exist for a category, mark it as **N/A** and skip.
 
@@ -53,7 +51,6 @@ If no files exist for a category, mark it as **N/A** and skip.
 Check references between files:
 - CLAUDE.md references to skills/agents that actually exist
 - Memory references to files/paths that are valid
-- Settings permissions match installed plugins' tool names
 - No orphaned files (agents/skills defined but never referenced)
 
 ### Step 4: Grade
@@ -80,7 +77,6 @@ For each applicable category, assign a letter grade:
 | Subagents          | N/A   | -      |
 | Commands           | N/A   | -      |
 | Hooks              | B     | 1      |
-| Settings           | B-    | 3      |
 | MCP                | N/A   | -      |
 
 **Overall: B**
