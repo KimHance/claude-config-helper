@@ -106,10 +106,10 @@ This plugin reviews itself. Latest results:
 
 | Category | Grade | Issues |
 |----------|-------|--------|
-| CLAUDE.md | B+ | 2 |
-| Skills | A- | 1 |
-| Subagents | A | 0 |
-| Commands | A- | 1 |
+| CLAUDE.md | A- | 1 |
+| Skills | A | 0 |
+| Subagents | A- | 1 |
+| Commands | B+ | 2 |
 
 **Overall: A-**
 
