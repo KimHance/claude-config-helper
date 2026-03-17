@@ -100,14 +100,14 @@ cchelp/
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.3.0)
+## Self-Review (v1.3.1)
 
 This plugin reviews itself. Latest results:
 
 | Category | Grade | Issues |
 |----------|-------|--------|
-| CLAUDE.md | A- | 1 |
-| Skills | A- | 2 |
+| CLAUDE.md | B+ | 2 |
+| Skills | A- | 1 |
 | Subagents | A | 0 |
 | Commands | A- | 1 |
 
