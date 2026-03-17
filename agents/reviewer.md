@@ -22,7 +22,6 @@ Discover all Claude-related files by searching these locations:
 **Project-level:**
 - `CLAUDE.md` (project root)
 - `**/CLAUDE.md` (module-level)
-- `.claude-plugin/` directory
 - `agents/*.md`
 - `skills/**/SKILL.md`
 - `commands/*.md`

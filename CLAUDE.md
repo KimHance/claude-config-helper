@@ -1,6 +1,6 @@
 # cchelp
 
-Plugin for reviewing and generating Claude Code configuration files (CLAUDE.md, skills, agents, memory, hooks, MCP, etc.).
+Review and generate Claude Code configuration files (CLAUDE.md, skills, agents, memory, hooks, MCP, etc.).
 
 ## Routing
 
