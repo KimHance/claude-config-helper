@@ -1,0 +1,13 @@
+{
+  "name": "claude-config-helper",
+  "description": "Claude Code configuration helper - review and generate CLAUDE.md, skills, agents, memory, hooks, settings, and MCP configs",
+  "version": "1.0.0",
+  "author": { "name": "KimHance" },
+  "license": "MIT",
+  "skills": "./skills/",
+  "agents": [
+    "./agents/claude-config-reviewer.md",
+    "./agents/claude-config-generator.md"
+  ],
+  "commands": "./commands/"
+}
