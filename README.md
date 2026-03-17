@@ -36,6 +36,14 @@ Claude Code를 사용할 때 작성하는 다양한 설정 파일들 — `CLAUDE
 - 스킬/에이전트/커맨드 스캐폴딩
 - 훅, settings, MCP 설정 생성
 
+### Setup (`setup-claude-config`)
+
+생성과 리뷰를 한 번에 실행하는 오케스트레이션 워크플로우입니다.
+
+1. **Generate** — `claude-config-generator`로 설정 파일 생성
+2. **Review** — `claude-config-reviewer`로 생성된 파일 품질 검증
+3. **Fix** — Critical/Important 이슈 발견 시 자동 수정 제안
+
 ## Usage
 
 ### Natural Language (자동 스폰)
@@ -45,6 +53,7 @@ Claude Code를 사용할 때 작성하는 다양한 설정 파일들 — `CLAUDE
 AI 관련 세팅 리뷰해줘
 클로드 세팅 만들어줘
 프로젝트 AI 세팅 초기화해줘
+클로드 세팅 만들고 리뷰까지 해줘
 ```
 
 ### Slash Commands
@@ -52,6 +61,7 @@ AI 관련 세팅 리뷰해줘
 ```
 /review-claude-config    # 설정 파일 리뷰
 /generate-claude-config  # 설정 파일 생성
+/setup-claude-config     # 생성 + 리뷰 한 번에
 ```
 
 ## Installation
@@ -84,10 +94,12 @@ claude-config-helper/
 │   └── claude-config-generator.md   # Generator agent
 ├── skills/
 │   ├── review-claude-config/        # Review checklists (8 categories)
-│   └── generate-claude-config/      # Generation templates (8 types)
+│   ├── generate-claude-config/      # Generation templates (8 types)
+│   └── setup-claude-config/         # Generate + Review orchestration
 ├── commands/
 │   ├── review-claude-config.md      # /review-claude-config
-│   └── generate-claude-config.md    # /generate-claude-config
+│   ├── generate-claude-config.md    # /generate-claude-config
+│   └── setup-claude-config.md       # /setup-claude-config
 └── CLAUDE.md
 ```
 
