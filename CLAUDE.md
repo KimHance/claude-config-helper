@@ -1,5 +1,7 @@
 # cchelp
 
+## Routing
+
 - Claude config **review** tasks → `reviewer` subagent
 - Claude config **generation/scaffolding** tasks → `generator` subagent
 - Claude config **full setup** (generate + review) → `gn-rv` skill

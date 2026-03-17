@@ -36,7 +36,7 @@ Present the user with options:
 
 ### Step 3: Generate Files
 
-For each file type, follow the templates and best practices from the `generate` skill.
+For each file type, invoke the `generate` skill using the Skill tool to load the templates and best practices.
 
 Key principles:
 - **CLAUDE.md**: Imperative tone, actionable instructions, concise (respect context window)

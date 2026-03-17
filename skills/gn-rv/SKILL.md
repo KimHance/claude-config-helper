@@ -1,6 +1,10 @@
 ---
 name: gn-rv
-description: End-to-end Claude config orchestration — generates config files then reviews them for quality. Use when the user wants a complete setup with quality assurance in one step.
+description: |
+  End-to-end Claude config orchestration — generates config files then reviews them for quality.
+  <example>user: "클로드 세팅 만들고 리뷰까지 해줘" assistant: uses gn-rv skill</example>
+  <example>user: "generate and review claude config" assistant: uses gn-rv skill</example>
+  <example>user: "설정 파일 생성하고 검증해줘" assistant: uses gn-rv skill</example>
 ---
 
 # Claude Config Setup (Generate + Review)
