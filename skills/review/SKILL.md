@@ -9,7 +9,7 @@ Evaluation criteria for reviewing Claude Code configuration files. Each category
 
 ## Workflow
 
-1. **Scan** — Find all Claude-related files at project and user levels
+1. **Scan** — Find all Claude-related files at project level
 2. **Categorize** — Determine which of the 8 categories are applicable (skip N/A)
 3. **Evaluate** — For each category, load `references/<category>-checklist.md` and check each item
 4. **Cross-validate** — Verify references between files are consistent
@@ -26,8 +26,8 @@ Evaluation criteria for reviewing Claude Code configuration files. Each category
 | 4 | Subagents | `agents/*.md` | `references/agents-checklist.md` |
 | 5 | Commands | `commands/*.md` | `references/commands-checklist.md` |
 | 6 | Hooks | `hooks/hooks.json`, hook scripts | `references/hooks-checklist.md` |
-| 7 | Settings | `~/.claude/settings*.json` | `references/settings-checklist.md` |
-| 8 | MCP | `.mcp.json`, `~/.claude/mcp.json` | `references/mcp-checklist.md` |
+| 7 | Settings | `.claude/settings.json` (project-level) | `references/settings-checklist.md` |
+| 8 | MCP | `.mcp.json` (project-level) | `references/mcp-checklist.md` |
 
 ## Cross-Validation Checks
 
