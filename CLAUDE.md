@@ -6,7 +6,9 @@ Review and generate Claude Code configuration files (CLAUDE.md, skills, agents, 
 
 - Claude config **review** tasks → `reviewer` subagent
 - Claude config **generation/scaffolding** tasks → `generator` subagent
-- Claude config **full setup** (generate + review) → `gn-rv` skill
+- Claude config **full setup** (generate + review + benchmark) → `gn-rv` (generate-and-review) skill
+- Benchmark **eval grading** (internal, spawned by reviewer) → `grader` subagent
+- Benchmark **eval execution** (internal, spawned by reviewer in pairs) → `eval-runner` subagent
 - Review criteria are in the `review` skill
 - Generation templates are in the `generate` skill
 

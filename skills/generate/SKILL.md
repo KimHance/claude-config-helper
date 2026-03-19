@@ -1,6 +1,6 @@
 ---
 name: generate
-description: Templates and best practices for generating Claude Code configuration files including CLAUDE.md, memory, skills, agents, commands, hooks, settings, and MCP setup
+description: Use when scaffolding or creating Claude Code configuration files from scratch. Provides templates for CLAUDE.md, memory, skills, agents, commands, hooks, settings, and MCP setup.
 ---
 
 # Claude Config Generator

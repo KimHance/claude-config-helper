@@ -35,13 +35,15 @@ Analyzes the project's tech stack and scaffolds Claude config files from templat
 - Skills / agents / commands scaffolding
 - Hooks, settings, MCP configuration
 
-### Generate + Review (`gn-rv`)
+### Generate + Review + Benchmark (`gn-rv`)
 
-End-to-end orchestration workflow.
+End-to-end orchestration workflow (generate-and-review).
 
 1. **Generate** — Scaffold config files via `generator`
-2. **Review** — Audit generated files via `reviewer`
-3. **Fix** — Offer auto-fix for Critical/Important issues
+2. **Snapshot** — Copy originals for baseline comparison (if updating)
+3. **Review + Benchmark** — Audit via `reviewer` with parallel eval (with-skill vs baseline)
+4. **Iterate** — User-driven feedback loop until satisfied
+5. **Description Optimize** — Optional trigger accuracy tuning
 
 ## Usage
 
@@ -87,12 +89,14 @@ Add to `~/.claude/settings.json`:
 cchelp/
 ├── .claude-plugin/          # Plugin & marketplace metadata
 ├── agents/
-│   ├── reviewer.md          # Review agent (opus)
-│   └── generator.md         # Generator agent (sonnet)
+│   ├── reviewer.md          # Review agent (opus) — user-facing
+│   ├── generator.md         # Generator agent (sonnet) — user-facing
+│   ├── grader.md            # Eval grader (opus) — internal
+│   └── eval-runner.md       # Eval executor (sonnet) — internal
 ├── skills/
-│   ├── review/              # Review checklists (7 categories)
+│   ├── review/              # Review checklists + benchmark eval (7 categories)
 │   ├── generate/            # Generation templates (8 types)
-│   └── gn-rv/               # Generate + Review orchestration
+│   └── gn-rv/               # Generate + Review + Benchmark orchestration
 ├── commands/
 │   ├── review.md            # /review
 │   ├── generate.md          # /generate
@@ -100,16 +104,16 @@ cchelp/
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.3.1)
+## Self-Review (v1.4.1)
 
 This plugin reviews itself. Latest results:
 
-| Category | Grade | Issues |
-|----------|-------|--------|
-| CLAUDE.md | B+ | 2 |
-| Skills | A- | 1 |
-| Subagents | A | 0 |
-| Commands | A- | 1 |
+| Category | Grade | Issues | Benchmark |
+|----------|-------|--------|-----------|
+| CLAUDE.md | A- | 1 | - |
+| Skills | A- | 2 | +75% vs baseline |
+| Subagents | A | 1 | (via skills) |
+| Commands | A- | 1 | - |
 
 **Overall: A-**
 
