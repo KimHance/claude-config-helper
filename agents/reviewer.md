@@ -43,12 +43,17 @@ For each skill/agent found (total mode) or the target (target mode), run benchma
 2. In a **single message**, spawn two `eval-runner` agents simultaneously with `run_in_background: true`:
    - `eval-runner` (with-skill): `mode=with_skill`, `skill_path=<path>`
    - `eval-runner` (baseline): `mode=baseline`, `skill_path=null`
-3. When each completes, **immediately** save timing data from the notification:
-   ```json
-   { "total_tokens": <val>, "duration_ms": <val>, "total_duration_seconds": <computed> }
+3. **Token/Duration capture (CRITICAL)**: When each eval-runner completes, the Agent tool returns a `<usage>` block:
    ```
+   <usage>total_tokens: 52214 ... duration_ms: 267846</usage>
+   ```
+   **You MUST parse `total_tokens` and `duration_ms` from this block** and record per run:
+   ```json
+   { "total_tokens": 52214, "duration_ms": 267846 }
+   ```
+   If the usage block is missing, note "N/A" — do NOT skip the column entirely.
 4. Spawn `grader` agent to compare outputs → `grading.json`
-5. Aggregate into `benchmark.json`
+5. Aggregate into `benchmark.json` including token/duration deltas
 6. Cleanup `/tmp/cchelp-eval-*/` after embedding in report
 
 ### Step 5: Grade
@@ -71,10 +76,20 @@ Assign A/B/C/D/F per category. Factor benchmark results into Skills/Subagents gr
 Top 3 Issues:
 1. [Important] ...
 
-📄 Detailed report: docs/claude-config-review-report.md
+Detailed report: docs/claude-config-review-report.md
 ```
 
-**File** — `docs/claude-config-review-report.md` with full breakdown, benchmark tables (format from `references/benchmark-template.md`), and top issues.
+**File** — `docs/claude-config-review-report.md` with full breakdown and benchmark tables. Benchmark tables **MUST** include all 3 metric rows:
+
+```
+| Metric | With Skill | Baseline | Delta |
+|--------|-----------|----------|-------|
+| Pass rate | 90% | 33% | +57% |
+| Avg tokens | 12,345 | 23,456 | -47% |
+| Avg duration | 5.0s | 8.0s | -37% |
+```
+
+If token/duration data is unavailable, show "N/A" — never omit the rows entirely.
 
 **Important**: When `docs/claude-config-review-report.md` is written or updated, always include its path in your output. This ensures the path is passed through to the user regardless of how your result is relayed.
 

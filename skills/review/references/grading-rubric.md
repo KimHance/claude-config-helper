@@ -14,13 +14,19 @@
 - `claude-md-imperative-tone`: Uses imperative voice, not narrative
 - `claude-md-has-routing`: Contains routing/delegation rules
 - `claude-md-no-stale-refs`: All referenced files actually exist
+- `claude-md-imports-valid`: `@path` imports point to existing files (if used)
+- `claude-md-rules-dir-valid`: `.claude/rules/` files have correct frontmatter and valid path globs (if used)
+- `claude-md-no-conflicts`: No contradictory instructions across files and imports
 
 ### Skills
 - `skill-md-has-frontmatter`: Has name and description in frontmatter
 - `skill-md-description-has-when`: Description explains when to trigger
+- `skill-md-description-under-250`: Description under 250 characters
 - `skill-md-under-500-lines`: SKILL.md stays lean
 - `skill-has-references-dir`: Uses progressive disclosure with references/
 - `skill-refs-exist`: All referenced files actually exist
+- `skill-optional-fields-valid`: Optional frontmatter fields (paths, context, model, allowed-tools) used correctly
+- `skill-invocation-control-justified`: `disable-model-invocation` / `user-invocable` settings match skill's purpose
 
 ### Agents
 - `agent-has-frontmatter`: Has name, description, model fields
@@ -31,6 +37,20 @@
 ### Commands
 - `command-has-frontmatter`: Has description field
 - `command-delegates`: Complex commands delegate to agents/skills
+
+### Hooks
+- `hook-event-valid`: Uses valid event names from the full event list
+- `hook-type-valid`: Hook type matches handler (`command`→command, `http`→url, `prompt`→prompt, `agent`→agent)
+- `hook-matcher-specific`: Matchers are not overly broad
+- `hook-blocking-fast`: Blocking hooks (PreToolUse, UserPromptSubmit) are lightweight
+- `hook-scripts-exist`: Referenced command scripts exist and are executable
+- `hook-no-secrets`: No hardcoded secrets in hook scripts or prompts
+
+### MCP
+- `mcp-transport-current`: Uses HTTP transport (not deprecated SSE) where possible
+- `mcp-scope-correct`: Servers placed in correct scope (local/project/user)
+- `mcp-no-hardcoded-secrets`: Uses `${VAR}` expansion, no hardcoded credentials
+- `mcp-no-duplicate-tools`: No duplicate tool names across servers
 
 ## grading.json Format
 
