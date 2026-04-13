@@ -104,7 +104,7 @@ cchelp/
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.5.0)
+## Self-Review (v1.6.0)
 
 This plugin reviews itself. Latest results:
 
@@ -113,7 +113,7 @@ This plugin reviews itself. Latest results:
 | CLAUDE.md | A- | 1 | - |
 | Memory | A- | 1 | - |
 | Skills | A- | 2 | +57% pass rate, -35% tokens |
-| Subagents | A | 1 | +83% pass rate, -35% tokens |
+| Subagents | A | 0 | +83% pass rate, -35% tokens |
 | Commands | A- | 1 | - |
 | Hooks | N/A | - | - |
 | MCP | N/A | - | - |

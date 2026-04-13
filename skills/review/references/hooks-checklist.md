@@ -15,7 +15,7 @@
 - [ ] Events are valid. Full list:
   - Session: `SessionStart`, `SessionEnd`
   - User: `UserPromptSubmit`
-  - Tool: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`
+  - Tool: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `PermissionDenied`
   - Agent: `SubagentStart`, `SubagentStop`, `Stop`, `StopFailure`
   - Task: `TaskCreated`, `TaskCompleted`
   - Notification: `Notification`, `TeammateIdle`
@@ -61,6 +61,10 @@
 - [ ] Frontmatter hooks use valid event names
 - [ ] Hooks are scoped to the component lifecycle (active only while skill/agent runs)
 - [ ] `Stop` hooks in subagents are correctly converted to `SubagentStop`
+
+## Managed Hooks
+- [ ] `allowManagedHooksOnly` — if set in managed policy, verify plugin hooks from force-enabled plugins still run as intended (expected behavior since v2.1.101)
+- [ ] Unrecognized hook event names in `settings.json` are gracefully ignored (no longer crash the entire file since v2.1.101); remove any stale/typo event names to keep config clean
 
 ## Environment Variables
 - [ ] Scripts use `$CLAUDE_PROJECT_DIR` for project root (not hardcoded paths)

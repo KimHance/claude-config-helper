@@ -27,3 +27,18 @@
 ## Tool Access
 - [ ] If agent needs specific tools, they are mentioned in the instructions
 - [ ] No unnecessary tool access requested
+- [ ] `tools` (allowlist) vs `disallowedTools` (denylist) used appropriately — not both for the same tool
+- [ ] MCP tools inherited from parent session unless explicitly scoped via `mcpServers` field
+
+## Advanced Frontmatter (if used)
+- [ ] `permissionMode` — appropriate mode chosen (`default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`)
+- [ ] `maxTurns` — reasonable limit set to prevent runaway agents (if used)
+- [ ] `skills` — preloaded skills are relevant to the agent's task; full content injected at startup, not just descriptions
+- [ ] `mcpServers` — inline server definitions scoped to subagent; string references reuse parent session connections
+- [ ] `hooks` — lifecycle hooks scoped to subagent; not supported in plugin subagents (silently ignored)
+- [ ] `memory` — persistent memory scope set correctly (`user`, `project`, or `local`) if cross-session learning is needed
+- [ ] `background` — set to `true` only for agents that should always run as background tasks
+- [ ] `effort` — effort level override appropriate for agent's workload
+- [ ] `isolation` — `worktree` used when agent needs an isolated git worktree copy (auto-cleaned if no changes made)
+- [ ] `color` — display color set for visual identification in UI (if used)
+- [ ] `initialPrompt` — auto-submitted first turn is appropriate for agents run as main session via `--agent` (if used)

@@ -109,8 +109,10 @@ Rule syntax: `Tool` or `Tool(specifier)`.
 | `claudeMdExcludes` | Skip specific CLAUDE.md files |
 | `enableAllProjectMcpServers` | Auto-enable project MCP servers |
 | `allowedMcpServers` / `deniedMcpServers` | MCP policy control |
+| `allowManagedHooksOnly` | Managed-only: restrict hooks to managed/force-enabled plugin hooks |
 | `language` | UI language |
-| `statusLine` | Custom status line |
+| `statusLine` | Custom status line command |
+| `refreshInterval` | Re-run status line command every N seconds |
 | `respectGitignore` | Honor .gitignore in file operations |
 | `plansDirectory` | Custom plans storage location |
 

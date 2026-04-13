@@ -23,7 +23,8 @@
 
 ## Authentication
 - [ ] OAuth 2.0 configured correctly (if used)
-- [ ] `headersHelper` used for dynamic non-OAuth auth (if applicable)
+- [ ] `headersHelper` used for dynamic non-OAuth auth (if applicable) — do NOT combine with OAuth; they are distinct auth methods
+- [ ] `oauth.authServerMetadataUrl` set when using a non-standard OAuth IdP (e.g., ADFS) that does not publish standard discovery metadata
 - [ ] Pre-configured credentials (`--client-id`, `--client-secret`) stored securely
 
 ## Tool Naming
