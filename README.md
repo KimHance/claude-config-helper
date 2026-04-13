@@ -19,7 +19,7 @@ Evaluates 7 categories against best-practice checklists and assigns letter grade
 | CLAUDE.md | Structure, clarity, context efficiency, duplication |
 | Memory | Frontmatter, index structure, type consistency, date format |
 | Skills | SKILL.md structure, description quality, token efficiency |
-| Agents | Trigger examples, model selection, role clarity |
+| Agents | Trigger examples, model selection, role clarity, advanced frontmatter fields |
 | Commands | Naming, frontmatter, delegation patterns |
 | Hooks | Event matching, script executability, performance |
 | MCP | Server config, tool duplication, secret management |

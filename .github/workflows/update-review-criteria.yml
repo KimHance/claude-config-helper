@@ -93,18 +93,24 @@ jobs:
 
             ## Step 6: Merge Results into README
 
-            Read the current README.md Self-Review section.
-            Update ONLY the rows for categories that were re-reviewed:
-            - Replace the Grade, Issues, Benchmark columns for changed categories
+            Read the current README.md.
+            Update the Self-Review section:
+            - Replace the Grade, Issues, Benchmark columns for changed categories only
             - Keep all other rows exactly as they are
             - If benchmarks were run, update the Metric table too
             - Update the version in the section header (e.g. "## Self-Review (v1.6.0)")
 
+            Also update the Features > Review table ("What it checks" column):
+            - For any category whose checklist changed, update the description
+              to reflect the current key check areas (short comma-separated list,
+              matching existing style)
+
             ## Step 7: Create PR
 
-            Create a pull request with:
+            Create a pull request using `gh pr create` with:
             - Title: "chore: update review criteria vX.Y.Z (YYYY-MM-DD)"
             - Labels: automated, criteria-update
+            - Reviewer: KimHance
             - Body must include:
               - Which Claude Code releases were referenced
               - Which categories were updated and why
