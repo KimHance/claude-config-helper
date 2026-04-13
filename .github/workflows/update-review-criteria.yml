@@ -62,13 +62,14 @@ jobs:
             Allowed files to modify:
             - skills/review/references/*.md
             - skills/generate/references/*.md
+            - .claude-plugin/plugin.json (version field only)
+            - .claude-plugin/marketplace.json (version field only)
             - README.md (Self-Review section only)
 
             Do NOT modify:
             - agents/*.md
             - skills/*/SKILL.md
             - CLAUDE.md
-            - .claude-plugin/*
 
             ## Step 4: Partial Self-Review
 
@@ -79,24 +80,36 @@ jobs:
             3. If the changed category is Skills or Subagents (benchmark: true in mapping),
                also run benchmark evaluation (eval-runner pairs: with-skill vs baseline)
 
-            ## Step 5: Merge Results into README
+            ## Step 5: Version Bump
+
+            Determine the bump level based on the scope of changes:
+            - patch: minor edits to existing items, small number of additions
+            - minor: new sections added, many new checklist items
+            - major: category structure changes, large-scale modifications
+
+            1. Read current version from `.claude-plugin/plugin.json`
+            2. Bump the version accordingly
+            3. Update `version` in both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
+
+            ## Step 6: Merge Results into README
 
             Read the current README.md Self-Review section.
             Update ONLY the rows for categories that were re-reviewed:
             - Replace the Grade, Issues, Benchmark columns for changed categories
             - Keep all other rows exactly as they are
             - If benchmarks were run, update the Metric table too
-            - Do NOT change the version number
+            - Update the version in the section header (e.g. "## Self-Review (v1.6.0)")
 
-            ## Step 6: Create PR
+            ## Step 7: Create PR
 
             Create a pull request with:
-            - Title: "chore: update review criteria (YYYY-MM-DD)"
+            - Title: "chore: update review criteria vX.Y.Z (YYYY-MM-DD)"
             - Labels: automated, criteria-update
             - Body must include:
               - Which Claude Code releases were referenced
               - Which categories were updated and why
               - Summary of checklist changes
               - Partial self-review results
+              - Version bump level and reason
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
 

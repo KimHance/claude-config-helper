@@ -1,0 +1,40 @@
+name: Auto Release
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  release:
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'criteria-update')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Extract version and create release
+        run: |
+          VERSION=$(grep -o '"version": *"[^"]*"' .claude-plugin/plugin.json | head -1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+          TAG="v${VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --notes "Automated criteria update release. See PR #${{ github.event.pull_request.number }} for details." \
+            --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
