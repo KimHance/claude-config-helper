@@ -1,0 +1,102 @@
+name: Update Review Criteria
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 09:00 UTC (KST 18:00)
+  workflow_dispatch: {}
+
+jobs:
+  update-criteria:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update review criteria
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: true
+          claude_args: |
+            --permission-mode bypassPermissions
+          prompt: |
+            You are maintaining a Claude Code configuration review plugin (cchelp).
+            Your job is to check if the review checklists and generation templates
+            need updating based on recent Claude Code releases.
+
+            ## Step 1: Detect Changes
+
+            Check Claude Code releases from the past 7 days. Since `gh` CLI is not
+            available, use WebFetch to read:
+            - https://github.com/anthropics/claude-code/releases
+
+            Extract changes related to these keywords:
+            hook, event, skill, frontmatter, agent, subagent, MCP, transport,
+            memory, CLAUDE.md, rules, command, slash, settings, permission
+
+            If no releases in the past 7 days, or no relevant changes found,
+            output "No updates needed" and stop.
+
+            ## Step 2: Impact Analysis
+
+            Read `.github/criteria-mapping.yml` to determine which files are affected.
+
+            For each affected category:
+            1. Read the official docs page (use WebFetch with the docs_url from mapping)
+            2. Read the current checklist/template file in this repo
+            3. Identify specific differences (new fields, removed options, changed behavior)
+
+            ## Step 3: Update Files
+
+            Modify only the affected checklist and/or template files:
+            - Add new checklist items for new features
+            - Update existing items if behavior changed
+            - Do NOT delete existing items (humans decide removals)
+
+            Allowed files to modify:
+            - skills/review/references/*.md
+            - skills/generate/references/*.md
+            - README.md (Self-Review section only)
+
+            Do NOT modify:
+            - agents/*.md
+            - skills/*/SKILL.md
+            - CLAUDE.md
+            - .claude-plugin/*
+
+            ## Step 4: Partial Self-Review
+
+            After updating checklist files, run a partial self-review:
+
+            1. Identify which categories had checklist changes (from git diff)
+            2. For each changed category, review THIS project against the NEW checklist
+            3. If the changed category is Skills or Subagents (benchmark: true in mapping),
+               also run benchmark evaluation (eval-runner pairs: with-skill vs baseline)
+
+            ## Step 5: Merge Results into README
+
+            Read the current README.md Self-Review section.
+            Update ONLY the rows for categories that were re-reviewed:
+            - Replace the Grade, Issues, Benchmark columns for changed categories
+            - Keep all other rows exactly as they are
+            - If benchmarks were run, update the Metric table too
+            - Do NOT change the version number
+
+            ## Step 6: Create PR
+
+            Create a pull request with:
+            - Title: "chore: update review criteria (YYYY-MM-DD)"
+            - Labels: automated, criteria-update
+            - Body must include:
+              - Which Claude Code releases were referenced
+              - Which categories were updated and why
+              - Summary of checklist changes
+              - Partial self-review results
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
+
