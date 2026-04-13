@@ -104,7 +104,7 @@ cchelp/
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.5.0)
+## Self-Review (v1.6.0)
 
 This plugin reviews itself. Latest results:
 
