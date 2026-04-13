@@ -78,6 +78,23 @@ claude mcp add --transport http my-server https://api.example.com/mcp \
   --callback-port 8080
 ```
 
+### Custom OAuth server metadata URL (non-standard IdPs)
+
+For IdPs like ADFS that do not publish standard discovery metadata, override the metadata URL in `.claude.json` or `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "url": "https://api.example.com/mcp",
+      "oauth": {
+        "authServerMetadataUrl": "https://adfs.company.com/.well-known/openid-configuration"
+      }
+    }
+  }
+}
+```
+
 ### Dynamic auth with headersHelper
 
 ```json

@@ -85,6 +85,7 @@ Hooks can be defined as one of four types:
 | `PostToolUse` | After tool succeeds | No |
 | `PostToolUseFailure` | After tool fails | No |
 | `PermissionRequest` | Permission dialog appears | Yes |
+| `PermissionDenied` | Auto mode denies tool call | No |
 | `SubagentStart` | Subagent spawned | No |
 | `SubagentStop` | Subagent finishes | No |
 | `Stop` | Claude finishes responding | No |
@@ -97,7 +98,7 @@ Hooks can be defined as one of four types:
 | `ConfigChange` | Config file changes | No |
 | `CwdChanged` | Working directory changes | No |
 | `FileChanged` | Watched file changes | No |
-| `WorktreeCreate` | Worktree created | No |
+| `WorktreeCreate` | Worktree created | Yes (any non-zero exit aborts creation) |
 | `WorktreeRemove` | Worktree removed | No |
 | `PreCompact` | Before compaction | No |
 | `PostCompact` | After compaction | No |
