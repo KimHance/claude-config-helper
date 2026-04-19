@@ -2,7 +2,7 @@ name: Update Review Criteria
 
 on:
   schedule:
-    - cron: '0 9 * * 1'  # Every Monday 09:00 UTC (KST 18:00)
+    - cron: '0 17 * * 6'  # Every Sunday 02:00 KST (Saturday 17:00 UTC)
   workflow_dispatch: {}
 
 jobs:
