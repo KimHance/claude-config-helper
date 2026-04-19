@@ -90,10 +90,7 @@ jobs:
               3. Re-run the self-review for affected categories
               4. Repeat up to 3 times maximum
             - If still below A- after 3 attempts:
-              - Proceed with PR creation anyway
-              - After PR is created, add a review comment on the PR:
-                "⚠️ Self-review grade remained below A- after 3 retry attempts.
-                Manual review required for the following categories: [list categories and grades]"
+              - Set QUALITY_PASSED=false (used in Step 7)
 
             ## Step 5: Version Bump
 
@@ -132,5 +129,14 @@ jobs:
               - Summary of checklist changes
               - Partial self-review results
               - Version bump level and reason
+
+            After PR is created:
+            - If QUALITY_PASSED (A- or above):
+              Run `gh pr merge --squash --auto` to enable auto-merge
+            - If NOT QUALITY_PASSED (below A- after 3 retries):
+              Add a review comment on the PR using `gh pr review --comment`:
+              "⚠️ Self-review grade remained below A- after 3 retry attempts.
+              Manual review required for the following categories: [list categories and grades]"
+              Do NOT auto-merge — wait for human review
           allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
 
