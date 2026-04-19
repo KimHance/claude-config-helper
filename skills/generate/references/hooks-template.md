@@ -100,7 +100,7 @@ Hooks can be defined as one of four types:
 | `FileChanged` | Watched file changes | No |
 | `WorktreeCreate` | Worktree created | Yes (any non-zero exit aborts creation) |
 | `WorktreeRemove` | Worktree removed | No |
-| `PreCompact` | Before compaction | No |
+| `PreCompact` | Before compaction | Yes (exit code 2, or `{"decision":"block"}` with exit 0) |
 | `PostCompact` | After compaction | No |
 | `Elicitation` | MCP server requests user input | No |
 | `ElicitationResult` | User responds to elicitation | No |
@@ -109,7 +109,7 @@ Hooks can be defined as one of four types:
 
 | Field | Description |
 |---|---|
-| `matcher` | Regex to filter when hook fires (tool name, source, etc.) |
+| `matcher` | Regex to filter when hook fires (tool name, source, etc.). For `PreCompact`: use `"manual"` or `"auto"` to target user-initiated vs automatic compaction |
 | `if` | Permission rule syntax filter |
 | `timeout` | Timeout in milliseconds |
 | `statusMessage` | User-facing status message |

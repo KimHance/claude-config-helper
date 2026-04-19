@@ -20,7 +20,7 @@ model: sonnet|opus|haiku|inherit
 # hooks:                                 # lifecycle hooks (not supported in plugin subagents)
 # memory: user                           # persistent memory: user|project|local
 # background: false                      # true = always runs as background task
-# effort: medium                         # low|medium|high|max (Opus only)
+# effort: medium                         # low|medium|high|xhigh (Opus 4.7+)|max (Opus only)
 # isolation: worktree                    # run in isolated git worktree copy
 # color: blue                            # red|blue|green|yellow|purple|orange|pink|cyan
 # initialPrompt: ""                      # auto-submitted first turn (for --agent mode only)
@@ -56,7 +56,7 @@ How results should be presented.
 | `hooks` | No | Lifecycle hooks (ignored in plugin subagents) |
 | `memory` | No | Persistent memory scope: `user`, `project`, or `local` |
 | `background` | No | `true` to always run as background task |
-| `effort` | No | `low`, `medium`, `high`, `max` (Opus 4.6 only) |
+| `effort` | No | `low`, `medium`, `high`, `xhigh` (Opus 4.7+ only), `max` |
 | `isolation` | No | `worktree` to run in isolated git worktree (auto-cleaned if no changes) |
 | `color` | No | UI color: `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, `cyan` |
 | `initialPrompt` | No | Auto-submitted first turn when running as main session agent via `--agent` |

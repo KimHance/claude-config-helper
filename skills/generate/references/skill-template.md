@@ -5,7 +5,7 @@
 ```markdown
 ---
 name: skill-name
-description: When to use this skill — specific enough for discovery matching (max 250 chars)
+description: When to use this skill — front-load the key use case (combined with when_to_use, capped at 1,536 chars in listing)
 ---
 
 # Skill Title
@@ -30,13 +30,14 @@ Detailed reference material is in `references/` subdirectory.
 | Field | Required | Description |
 |---|---|---|
 | `name` | Yes | Display name, becomes `/slash-command` |
-| `description` | Recommended | When to use (truncated at 250 chars) |
+| `description` | Recommended | When to use — combined with `when_to_use`, truncated at 1,536 chars in skill listing |
+| `when_to_use` | No | Supplemental trigger phrases/examples appended to `description` in listing; counts toward 1,536-char cap |
 | `argument-hint` | No | Hint shown in autocomplete |
 | `disable-model-invocation` | No | `true` = only user can invoke via `/` |
 | `user-invocable` | No | `false` = hidden from `/` menu, Claude invokes automatically |
 | `allowed-tools` | No | Tools Claude can use without permission prompts |
 | `model` | No | Model override (e.g., `opus`, `sonnet`, `haiku`) |
-| `effort` | No | Effort level override |
+| `effort` | No | Effort level override: `low`, `medium`, `high`, `xhigh` (Opus 4.7+), `max` |
 | `context` | No | `fork` to run in isolated subagent |
 | `agent` | No | Subagent type when `context: fork` (e.g., `Explore`, `Plan`, custom) |
 | `paths` | No | Glob patterns for auto-activation (e.g., `["src/api/**/*.ts"]`) |
@@ -137,7 +138,7 @@ Priority: enterprise > personal > project.
 ## Best Practices
 
 - Description should explain WHEN to use, not just WHAT it does
-- Keep SKILL.md under 200 lines
+- Keep SKILL.md under 500 lines
 - Move detailed checklists/guides to references/ for progressive disclosure
 - Content should be actionable, not narrative
 - Don't explain things Claude already knows

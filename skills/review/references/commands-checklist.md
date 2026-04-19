@@ -16,3 +16,4 @@
 ## Discoverability
 - [ ] Command name is intuitive — user can guess it
 - [ ] Description in frontmatter helps Claude match user intent
+- [ ] If the command wraps functionality already in a built-in skill (`/init`, `/review`, `/security-review`), consider delegating to it via the Skill tool instead of reimplementing (Claude can invoke built-in skills programmatically as of v2.1.113)

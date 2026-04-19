@@ -24,7 +24,10 @@
   - Worktree: `WorktreeCreate`, `WorktreeRemove`
   - Compaction: `PreCompact`, `PostCompact`
   - MCP: `Elicitation`, `ElicitationResult`
-- [ ] Blocking events (`PreToolUse`, `UserPromptSubmit`, `PermissionRequest`) used appropriately
+- [ ] Blocking events (`PreToolUse`, `UserPromptSubmit`, `PermissionRequest`, `PreCompact`) used appropriately
+- [ ] `PreCompact` blocking: exit code 2 OR JSON `{"decision":"block"}` with exit 0 (as of v2.1.113)
+- [ ] `PreCompact` matcher (if used) is `"manual"` or `"auto"` to target user-initiated vs automatic compaction
+- [ ] `PermissionRequest` hooks returning `updatedInput`: the modified input is **re-checked against deny/ask rules** — an allow decision does not bypass deny rules (as of v2.1.113)
 
 ## Optional Fields
 - [ ] `matcher` — regex is specific, not overly broad

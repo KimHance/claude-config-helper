@@ -58,6 +58,7 @@ Rule syntax: `Tool` or `Tool(specifier)`.
     },
     "network": {
       "allowedDomains": ["api.example.com"],
+      "deniedDomains": ["internal-only.example.com"],
       "allowUnixSockets": false,
       "allowLocalBinding": false
     }
@@ -126,3 +127,6 @@ Rule syntax: `Tool` or `Tool(specifier)`.
 - Use sandbox for additional security on sensitive projects
 - Use `deny` rules for dangerous operations before `allow` rules
 - `additionalDirectories` for monorepo or shared library access
+- `sandbox.network.deniedDomains` blocks specific domains even when a broader `allowedDomains` wildcard would permit them (v2.1.113)
+- `Bash(find:*)` allow rules do **not** auto-approve `find -exec` or `find -delete` — add explicit rules if needed (v2.1.113)
+- Bash deny rules match commands wrapped in `env`/`sudo`/`watch`/`ionice`/`setsid` and similar exec wrappers (v2.1.113)
