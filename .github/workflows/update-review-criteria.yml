@@ -80,6 +80,21 @@ jobs:
             3. If the changed category is Skills or Subagents (benchmark: true in mapping),
                also run benchmark evaluation (eval-runner pairs: with-skill vs baseline)
 
+            ## Step 4.5: Quality Gate
+
+            Check the overall grade from the self-review:
+            - If A- or above: proceed to Step 5
+            - If below A- (B+ or lower):
+              1. Identify which checklist items failed
+              2. Fix the issues in the checklist/template files
+              3. Re-run the self-review for affected categories
+              4. Repeat up to 3 times maximum
+            - If still below A- after 3 attempts:
+              - Proceed with PR creation anyway
+              - After PR is created, add a review comment on the PR:
+                "⚠️ Self-review grade remained below A- after 3 retry attempts.
+                Manual review required for the following categories: [list categories and grades]"
+
             ## Step 5: Version Bump
 
             Determine the bump level based on the scope of changes:
