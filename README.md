@@ -18,10 +18,10 @@ Evaluates 7 categories against best-practice checklists and assigns letter grade
 |----------|---------------|
 | CLAUDE.md | Structure, clarity, context efficiency, duplication |
 | Memory | Frontmatter, index structure, type consistency, date format |
-| Skills | SKILL.md structure, description quality, token efficiency |
-| Agents | Trigger examples, model selection, role clarity, advanced frontmatter fields |
-| Commands | Naming, frontmatter, delegation patterns |
-| Hooks | Event matching, script executability, performance |
+| Skills | SKILL.md structure, description quality (1,536-char cap), when_to_use, token efficiency |
+| Agents | Trigger examples, model selection, role clarity, advanced frontmatter fields (xhigh effort) |
+| Commands | Naming, frontmatter, delegation patterns, built-in skill reuse |
+| Hooks | Event matching, PreCompact blocking, PermissionRequest updatedInput re-check, performance |
 | MCP | Server config, tool duplication, secret management |
 
 **Output:** Terminal summary table + detailed report at `docs/claude-config-review-report.md`
@@ -104,7 +104,7 @@ cchelp/
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.6.0)
+## Self-Review (v1.7.0)
 
 This plugin reviews itself. Latest results:
 
@@ -112,9 +112,9 @@ This plugin reviews itself. Latest results:
 |----------|-------|--------|-----------|
 | CLAUDE.md | A- | 1 | - |
 | Memory | A- | 1 | - |
-| Skills | A- | 2 | +57% pass rate, -35% tokens |
+| Skills | A | 0 | +57% pass rate, -35% tokens |
 | Subagents | A | 0 | +83% pass rate, -35% tokens |
-| Commands | A- | 1 | - |
+| Commands | A | 0 | - |
 | Hooks | N/A | - | - |
 | MCP | N/A | - | - |
 
@@ -124,7 +124,7 @@ This plugin reviews itself. Latest results:
 | Avg tokens | ~29,250 | ~45,000 | -35% |
 | Avg duration | ~73s | ~112s | -35% |
 
-**Overall: A-**
+**Overall: A**
 
 ## License
 
