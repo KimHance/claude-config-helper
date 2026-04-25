@@ -3,19 +3,20 @@
 ## Hook Configuration
 - [ ] Valid JSON format in settings file or frontmatter
 - [ ] Configured in correct location (`~/.claude/settings.json`, `.claude/settings.json`, `.claude/settings.local.json`, managed policy, or plugin `hooks/hooks.json`)
-- [ ] Each hook has: `event` and a handler (`command`, `url`, `prompt`, or `agent`)
+- [ ] Each hook has: `event` and a handler (`command`, `url`, `prompt`, `agent`, or `mcp_tool`)
 
 ## Hook Type Validation
 - [ ] `command` hooks: `command` field is a valid shell command or script path
 - [ ] `http` hooks: `url` field is a valid endpoint; URL is in `allowedHttpHookUrls` if managed
 - [ ] `prompt` hooks: `prompt` field contains clear single-turn evaluation instructions
 - [ ] `agent` hooks: `agent` field specifies valid subagent with appropriate tools
+- [ ] `mcp_tool` hooks: `server` and `tool` fields are set; `input` uses `${path}` substitution from hook input (v2.1.118+)
 
 ## Events
 - [ ] Events are valid. Full list:
   - Session: `SessionStart`, `SessionEnd`
-  - User: `UserPromptSubmit`
-  - Tool: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `PermissionDenied`
+  - User: `UserPromptSubmit`, `UserPromptExpansion`
+  - Tool: `PreToolUse`, `PostToolUse`, `PostToolBatch`, `PostToolUseFailure`, `PermissionRequest`, `PermissionDenied`
   - Agent: `SubagentStart`, `SubagentStop`, `Stop`, `StopFailure`
   - Task: `TaskCreated`, `TaskCompleted`
   - Notification: `Notification`, `TeammateIdle`
@@ -24,7 +25,8 @@
   - Worktree: `WorktreeCreate`, `WorktreeRemove`
   - Compaction: `PreCompact`, `PostCompact`
   - MCP: `Elicitation`, `ElicitationResult`
-- [ ] Blocking events (`PreToolUse`, `UserPromptSubmit`, `PermissionRequest`, `PreCompact`) used appropriately
+- [ ] Blocking events (`PreToolUse`, `UserPromptSubmit`, `UserPromptExpansion`, `PermissionRequest`, `PostToolUse`, `PostToolBatch`, `SubagentStop`, `Stop`, `TaskCreated`, `TaskCompleted`, `TeammateIdle`, `ConfigChange`, `PreCompact`, `Elicitation`, `ElicitationResult`) used appropriately
+- [ ] `PostToolUse` and `PostToolUseFailure` hook inputs include `duration_ms` (tool execution time in ms) — use for performance monitoring hooks (v2.1.119+)
 - [ ] `PreCompact` blocking: exit code 2 OR JSON `{"decision":"block"}` with exit 0 (as of v2.1.113)
 - [ ] `PreCompact` matcher (if used) is `"manual"` or `"auto"` to target user-initiated vs automatic compaction
 - [ ] `PermissionRequest` hooks returning `updatedInput`: the modified input is **re-checked against deny/ask rules** — an allow decision does not bypass deny rules (as of v2.1.113)
@@ -36,6 +38,8 @@
 - [ ] `statusMessage` — user-facing message is clear (if used)
 - [ ] `once` — set to `true` only for one-time hooks (if used)
 - [ ] `async` — set to `true` only for non-blocking background hooks (if used)
+- [ ] `asyncRewake` — wakes Claude when async command exits with code 2 (stderr shown); use with `async: true` (if used)
+- [ ] `shell` — set to `bash` (default) or `powershell` for command hooks targeting Windows environments (if used)
 
 ## Command Hook Scripts
 - [ ] Referenced scripts exist at the specified paths

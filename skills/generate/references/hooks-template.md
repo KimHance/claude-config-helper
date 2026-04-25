@@ -2,7 +2,7 @@
 
 ## Hook Types
 
-Hooks can be defined as one of four types:
+Hooks can be defined as one of five types:
 
 ### 1. Command Hook (shell script)
 
@@ -63,6 +63,27 @@ Hooks can be defined as one of four types:
 }
 ```
 
+### 5. MCP Tool Hook (call MCP server tool directly)
+
+```json
+{
+  "hooks": [
+    {
+      "type": "mcp_tool",
+      "event": "PreToolUse",
+      "matcher": "Edit|Write",
+      "server": "security-scanner",
+      "tool": "scan_file",
+      "input": {
+        "file_path": "${tool_input.file_path}"
+      }
+    }
+  ]
+}
+```
+
+`input` values support `${path}` substitution from the hook event payload. Text output from the tool is treated like command-hook stdout. Non-blocking if the MCP server is not connected. (v2.1.118+)
+
 ## Configuration Locations
 
 | Location | Scope |
@@ -81,29 +102,31 @@ Hooks can be defined as one of four types:
 | `SessionStart` | Session begins or resumes | No |
 | `SessionEnd` | Session terminates | No |
 | `UserPromptSubmit` | User submits a prompt | Yes |
+| `UserPromptExpansion` | Slash command expands | Yes |
 | `PreToolUse` | Before tool executes | Yes |
-| `PostToolUse` | After tool succeeds | No |
+| `PostToolUse` | After tool succeeds | Yes |
 | `PostToolUseFailure` | After tool fails | No |
+| `PostToolBatch` | Batch of parallel tools resolves | Yes |
 | `PermissionRequest` | Permission dialog appears | Yes |
 | `PermissionDenied` | Auto mode denies tool call | No |
 | `SubagentStart` | Subagent spawned | No |
-| `SubagentStop` | Subagent finishes | No |
-| `Stop` | Claude finishes responding | No |
+| `SubagentStop` | Subagent finishes | Yes |
+| `Stop` | Claude finishes responding | Yes |
 | `StopFailure` | Turn ends due to API error | No |
-| `TaskCreated` | Task created via TaskCreate | No |
-| `TaskCompleted` | Task completed | No |
+| `TaskCreated` | Task created via TaskCreate | Yes |
+| `TaskCompleted` | Task completed | Yes |
 | `Notification` | Notification sent | No |
-| `TeammateIdle` | Teammate going idle | No |
+| `TeammateIdle` | Teammate going idle | Yes |
 | `InstructionsLoaded` | CLAUDE.md or rules loaded | No |
-| `ConfigChange` | Config file changes | No |
+| `ConfigChange` | Config file changes | Yes |
 | `CwdChanged` | Working directory changes | No |
 | `FileChanged` | Watched file changes | No |
 | `WorktreeCreate` | Worktree created | Yes (any non-zero exit aborts creation) |
 | `WorktreeRemove` | Worktree removed | No |
 | `PreCompact` | Before compaction | Yes (exit code 2, or `{"decision":"block"}` with exit 0) |
 | `PostCompact` | After compaction | No |
-| `Elicitation` | MCP server requests user input | No |
-| `ElicitationResult` | User responds to elicitation | No |
+| `Elicitation` | MCP server requests user input | Yes |
+| `ElicitationResult` | User responds to elicitation | Yes |
 
 ## Optional Fields
 
@@ -115,6 +138,8 @@ Hooks can be defined as one of four types:
 | `statusMessage` | User-facing status message |
 | `once` | `true` to run only once per session |
 | `async` | `true` to run in background (non-blocking) |
+| `asyncRewake` | With `async: true`: wake Claude on exit code 2 with stderr shown |
+| `shell` | For command hooks: `bash` (default) or `powershell` |
 
 ## Command Hook Script Template
 
@@ -158,6 +183,16 @@ exit 0
   }
 }
 ```
+
+## PostToolUse / PostToolUseFailure Inputs
+
+Both events receive additional fields beyond the standard tool input/output:
+
+| Field | Description |
+|---|---|
+| `tool_response` | Tool execution result |
+| `tool_use_id` | Unique tool use identifier |
+| `duration_ms` | Tool execution time in milliseconds (v2.1.119+) |
 
 ## Hooks in Skill/Agent Frontmatter
 
