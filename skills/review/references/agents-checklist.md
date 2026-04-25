@@ -31,7 +31,7 @@
 - [ ] MCP tools inherited from parent session unless explicitly scoped via `mcpServers` field
 
 ## Advanced Frontmatter (if used)
-- [ ] `permissionMode` — appropriate mode chosen (`default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`)
+- [ ] `permissionMode` — appropriate mode chosen (`default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`); honored when running with `--agent <name>` flag (v2.1.119+)
 - [ ] `maxTurns` — reasonable limit set to prevent runaway agents (if used)
 - [ ] `skills` — preloaded skills are relevant to the agent's task; full content injected at startup, not just descriptions
 - [ ] `mcpServers` — inline server definitions scoped to subagent; string references reuse parent session connections

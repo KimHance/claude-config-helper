@@ -83,11 +83,15 @@ Rule syntax: `Tool` or `Tool(specifier)`.
   },
   "strictKnownMarketplaces": {
     "allowed-marketplace": true
-  }
+  },
+  "blockedMarketplaces": [
+    { "hostPattern": "*.untrusted.example.com", "pathPattern": "/plugins/*" }
+  ]
 }
 ```
 
 `strictKnownMarketplaces` is managed-only (admin-controlled allowlist).
+`blockedMarketplaces` blocks plugin installs from URLs matching `hostPattern` and/or `pathPattern`; both fields are enforced as of v2.1.119+.
 
 ## Subagent Configuration
 
@@ -107,6 +111,7 @@ Rule syntax: `Tool` or `Tool(specifier)`.
 | `env` | Environment variables |
 | `hooks` | Hook configuration |
 | `autoMemoryEnabled` / `autoMemoryDirectory` | Auto memory control |
+| `blockedMarketplaces` | Block plugin installs from specific URL patterns (`hostPattern`, `pathPattern`) |
 | `claudeMdExcludes` | Skip specific CLAUDE.md files |
 | `enableAllProjectMcpServers` | Auto-enable project MCP servers |
 | `allowedMcpServers` / `deniedMcpServers` | MCP policy control |
@@ -128,5 +133,7 @@ Rule syntax: `Tool` or `Tool(specifier)`.
 - Use `deny` rules for dangerous operations before `allow` rules
 - `additionalDirectories` for monorepo or shared library access
 - `sandbox.network.deniedDomains` blocks specific domains even when a broader `allowedDomains` wildcard would permit them (v2.1.113)
+- `/config` command changes persist automatically to the appropriate settings.json scope (user, project, or local)
+- PowerShell tool commands (when `defaultShell: powershell`) can be auto-approved via permission allow rules (v2.1.119+)
 - `Bash(find:*)` allow rules do **not** auto-approve `find -exec` or `find -delete` — add explicit rules if needed (v2.1.113)
 - Bash deny rules match commands wrapped in `env`/`sudo`/`watch`/`ionice`/`setsid` and similar exec wrappers (v2.1.113)

@@ -1,7 +1,7 @@
 {
   "name": "cchelp",
   "description": "Claude Code configuration helper - review and generate CLAUDE.md, skills, agents, memory, hooks, and MCP configs",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "author": { "name": "KimHance" },
   "license": "MIT",
   "skills": "./skills/",
