@@ -1,4 +1,4 @@
-"""CLI entry: U4 Apply (deterministic file mutations)."""
+"""U4 Apply (deterministic). PHASE 1 SCOPE: refs only. Templates and agent prompt propagation deferred to phase 2 (separate spec)."""
 import argparse
 import json
 from pathlib import Path
@@ -11,9 +11,6 @@ def main():
     ap.add_argument("--plan", required=True, type=Path)
     ap.add_argument("--review", required=True, type=Path)
     ap.add_argument("--refs-dir", required=True, type=Path)
-    ap.add_argument("--templates-dir", required=True, type=Path)
-    ap.add_argument("--agents-dir", required=True, type=Path)
-    ap.add_argument("--state-dir", required=True, type=Path)
     args = ap.parse_args()
 
     plan = json.loads(args.plan.read_text())

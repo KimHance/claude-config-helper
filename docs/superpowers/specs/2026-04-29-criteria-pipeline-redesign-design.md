@@ -340,6 +340,7 @@ U6 → U7
 - **기존 `docs/claude-config-review-report.md` 히스토리 마이그레이션.** 기존 보고서 그대로, 새 보고서부터 새 schema.
 - **`reviewer` / `grader` / `eval-runner` 의 prompt 재작성.** 본 spec 은 신규 `self-eval-runner` 정의만. 기존 agent prompt 편집은 implementation plan 에서.
 - **Phase 2: 단일 출처 모델 (브레인스토밍 결정 12 의 옵션 C).** templates 별도 파일 유지. C-style 동적 합성은 추후.
+- **Templates atomic propagation 와 Layer 2/3 agent propagation 의 실 구현.** 본 phase 1 은 refs (YAML schema 항목) 자동 갱신만 구현. 결정 12 (templates atomic), 결정 13 의 A (mandatory propagation) 의 실제 코드 generation 은 별도 sub-spec 으로 분리. 인자/구조는 미리 자리 잡혀 있으니 phase 2 에서 채우면 됨.
 
 ## 9. 리스크 및 미해결 사항
 

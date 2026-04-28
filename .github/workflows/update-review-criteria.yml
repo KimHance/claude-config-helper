@@ -123,6 +123,33 @@ jobs:
             exit 0
           fi
 
+      - name: Notify on abort
+        if: steps.plan_review_check.outputs.verdict == 'aborted'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          SUMMARY=$(jq -r '.summary // "no summary"' ${{ env.RUN_DIR }}/plan_review.json)
+          gh issue create \
+            --title "criteria cron aborted: plan review rejected ≥50% records ($DATE)" \
+            --body "## Plan Review Aborted
+
+          The weekly criteria cron was aborted because plan review rejected ≥50% of records.
+
+          **Date:** $DATE
+          **Run ID:** ${{ github.run_id }}
+
+          ## plan_review.json summary
+
+          $SUMMARY
+
+          ## Full plan_review.json
+
+          \`\`\`json
+          $(cat ${{ env.RUN_DIR }}/plan_review.json)
+          \`\`\`" \
+            --label "automated,plan-review-aborted"
+
       - name: U4 Apply (deterministic)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
         working-directory: cron
@@ -130,10 +157,7 @@ jobs:
           PYTHONPATH=. .venv/bin/python -m scripts.run_apply \
             --plan ${{ env.RUN_DIR }}/plan.json \
             --review ${{ env.RUN_DIR }}/plan_review.json \
-            --refs-dir ../skills/review/references \
-            --templates-dir ../skills/generate/references \
-            --agents-dir ../agents \
-            --state-dir state
+            --refs-dir ../skills/review/references
 
       - name: U5 Self-validate (smoke run with self-eval-runner)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
@@ -165,6 +189,16 @@ jobs:
             --prev-metric state/last_metric.json \
             --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
             --out ${{ env.RUN_DIR }}/signals.json
+
+      - name: Save state for next cron
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_save_state \
+            --fetched-dir ${{ env.RUN_DIR }}/fetched \
+            --curr-eval ${{ env.RUN_DIR }}/self_eval.json \
+            --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
+            --state-dir state
 
       - name: U6 Commit & PR
         if: steps.plan_review_check.outputs.verdict != 'aborted'
