@@ -9,8 +9,10 @@ Review and generate Claude Code configuration files (CLAUDE.md, skills, agents, 
 - Claude config **full setup** (generate + review + benchmark) → `gn-rv` (generate-and-review) skill
 - Benchmark **eval grading** (internal, spawned by reviewer) → `grader` subagent
 - Benchmark **eval execution** (internal, spawned by reviewer in pairs) → `eval-runner` subagent
-- Review criteria are in the `review` skill
-- Generation templates are in the `generate` skill
+- Weekly cron **self-review** (internal, U5 step) → `self-eval-runner` subagent (thin executor)
+- Weekly cron **plan validation** (internal, U3.5 step) → `plan-reviewer` subagent (independent)
+- Review criteria are in `skills/review/references/*.yml` (YAML schema, not prose)
+- Generation templates are in `skills/generate/references/*-template.md`
 
 ## Constraints
 
