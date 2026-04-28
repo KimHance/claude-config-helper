@@ -2,141 +2,236 @@ name: Update Review Criteria
 
 on:
   schedule:
-    - cron: '0 17 * * 6'  # Every Sunday 02:00 KST (Saturday 17:00 UTC)
+    - cron: '0 17 * * 6'  # Sun 02:00 KST
   workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  RUN_DIR: /tmp/cchelp-cron-${{ github.run_id }}
 
 jobs:
   update-criteria:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      id-token: write
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Update review criteria
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: U1 Fetch (docs + sitemap + changelog)
+        working-directory: cron
+        run: |
+          mkdir -p ${{ env.RUN_DIR }}/fetched
+          PYTHONPATH=. .venv/bin/python -m scripts.run_fetch \
+            --mapping ../criteria-mapping.yml \
+            --out-dir ${{ env.RUN_DIR }}/fetched
+
+      - name: U2 Diff (classify items)
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_diff \
+            --refs-dir ../skills/review/references \
+            --fetched-dir ${{ env.RUN_DIR }}/fetched \
+            --out ${{ env.RUN_DIR }}/diff.json
+
+      - name: Category discovery
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_category_discovery \
+            --new-sitemap ${{ env.RUN_DIR }}/fetched/sitemap.txt \
+            --prev-sitemap cron/state/sitemap.snapshot.txt \
+            --out ${{ env.RUN_DIR }}/discovery.json
+        continue-on-error: true
+
+      - name: U3 Plan (LLM extracts ADDs from new bodies + builds records)
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          show_full_output: true
           claude_args: |
             --permission-mode bypassPermissions
           prompt: |
-            You are maintaining a Claude Code configuration review plugin (cchelp).
-            Your job is to check if the review checklists and generation templates
-            need updating based on recent Claude Code releases.
+            너는 cchelp 의 주간 cron pipeline U3 (Plan) 단계.
 
-            ## Step 1: Detect Changes
+            입력:
+            - diff: ${{ env.RUN_DIR }}/diff.json (UPDATE/REMOVE 후보)
+            - fetched: ${{ env.RUN_DIR }}/fetched/<category>.md (각 카테고리 최신 docs body)
+            - discovery: ${{ env.RUN_DIR }}/discovery.json (새 카테고리 후보)
 
-            Check Claude Code releases from the past 7 days. Since `gh` CLI is not
-            available, use WebFetch to read:
-            - https://github.com/anthropics/claude-code/releases
+            할 일:
+            1. 각 fetched body 의 frontmatter table / schema row 등 검증 가능한 사실에서
+               ADD 후보를 추출하라. 추출은 다음 schema 를 가진 yaml 항목으로:
+                 - id (kebab-case unique)
+                 - type: programmatic 우선, 정성적이면 qualitative
+                 - proposition, verifier (kind 별 spec), source (url + fetched_at + quote), severity, category
+            2. quote 는 fetched body 의 verbatim substring 이어야 한다. 환각 금지.
+            3. UPDATE 후보 (diff.json) 의 새 payload 를 채워라 (새 body 의 새 quote 인용).
+            4. 카테고리 발견 후보 각각에 대해 빈 references/<category>.yml 추가하고 초기 항목 5개 이내 추출.
+            5. 모든 record 를 ${{ env.RUN_DIR }}/plan.json 에 PlanRecord JSON array 로 저장.
 
-            Extract changes related to these keywords:
-            hook, event, skill, frontmatter, agent, subagent, MCP, transport,
-            memory, CLAUDE.md, rules, command, slash, settings, permission
+            형식:
+            [
+              {"category": "...", "action": "ADD"|"UPDATE"|"REMOVE", "item_id": "...", "payload": {...} | null}
+            ]
+          allowed_tools: "Bash,Read,Write,Glob,Grep"
 
-            If no releases in the past 7 days, or no relevant changes found,
-            output "No updates needed" and stop.
+      - name: U3.5 Plan Review (independent subagent)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --agent plan-reviewer
+          prompt: |
+            너는 plan-reviewer agent. plan.json 과 fetched bodies 를 검증해라.
 
-            ## Step 2: Impact Analysis
+            플랜 경로: ${{ env.RUN_DIR }}/plan.json
+            fetched 경로: ${{ env.RUN_DIR }}/fetched/
 
-            Read `.github/criteria-mapping.yml` to determine which files are affected.
+            검증 1~3 (programmatic) 은 다음 명령으로:
+              cd cron && PYTHONPATH=. .venv/bin/python -m scripts.run_plan_review \
+                  --plan ${{ env.RUN_DIR }}/plan.json \
+                  --fetched-dir ${{ env.RUN_DIR }}/fetched/ \
+                  --out ${{ env.RUN_DIR }}/plan_review_partial.json
 
-            For each affected category:
-            1. Read the official docs page (use WebFetch with the docs_url from mapping)
-            2. Read the current checklist/template file in this repo
-            3. Identify specific differences (new fields, removed options, changed behavior)
+            검증 4 (의미 정합성) 는 너 자신이 plan_review_partial.json 의 통과 record 들에 대해
+            수행. 각 결론에 verbatim quote 인용 강제.
 
-            ## Step 3: Update Files
+            최종 결과를 ${{ env.RUN_DIR }}/plan_review.json 에 저장
+            (verdict, approved_records, rejected_records, summary 필드).
 
-            Modify only the affected checklist and/or template files:
-            - Add new checklist items for new features
-            - Update existing items if behavior changed
-            - Do NOT delete existing items (humans decide removals)
+      - name: Check plan review verdict
+        id: plan_review_check
+        run: |
+          VERDICT=$(jq -r '.verdict' ${{ env.RUN_DIR }}/plan_review.json)
+          echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
+          if [ "$VERDICT" = "aborted" ]; then
+            echo "Plan review aborted; exiting with marker"
+            exit 0
+          fi
 
-            Allowed files to modify:
-            - skills/review/references/*.md
-            - skills/generate/references/*.md
-            - .claude-plugin/plugin.json (version field only)
-            - .claude-plugin/marketplace.json (version field only)
-            - README.md (Self-Review section only)
+      - name: U4 Apply (deterministic)
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_apply \
+            --plan ${{ env.RUN_DIR }}/plan.json \
+            --review ${{ env.RUN_DIR }}/plan_review.json \
+            --refs-dir ../skills/review/references \
+            --templates-dir ../skills/generate/references \
+            --agents-dir ../agents \
+            --state-dir state
 
-            Do NOT modify:
-            - agents/*.md
-            - skills/*/SKILL.md
-            - CLAUDE.md
+      - name: U5 Self-validate (smoke run with self-eval-runner)
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --agent self-eval-runner
+          prompt: |
+            너는 self-eval-runner. cchelp 자기 자신을 새 refs 로 채점한다.
 
-            ## Step 4: Partial Self-Review
+            refs 디렉토리: skills/review/references/
+            대상: cchelp 자기 (skills/, agents/, .mcp.json 등)
 
-            After updating checklist files, run a partial self-review:
+            모든 항목 verifier 실행 후 결과를 ${{ env.RUN_DIR }}/self_eval.json 에
+            JSON array 로 저장.
 
-            1. Identify which categories had checklist changes (from git diff)
-            2. For each changed category, review THIS project against the NEW checklist
-            3. If the changed category is Skills or Subagents (benchmark: true in mapping),
-               also run benchmark evaluation (eval-runner pairs: with-skill vs baseline)
+            병렬로 baseline 도 같이 측정 (skill 미적용 상태로 동일 항목 채점).
+            baseline 결과는 ${{ env.RUN_DIR }}/baseline_eval.json.
 
-            ## Step 4.5: Quality Gate
+      - name: Compute B/C signals
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_signals \
+            --prev-eval state/last_self_eval.json \
+            --curr-eval ${{ env.RUN_DIR }}/self_eval.json \
+            --prev-metric state/last_metric.json \
+            --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
+            --out ${{ env.RUN_DIR }}/signals.json
 
-            Check the overall grade from the self-review:
-            - If A- or above: proceed to Step 5
-            - If below A- (B+ or lower):
-              1. Identify which checklist items failed
-              2. Fix the issues in the checklist/template files
-              3. Re-run the self-review for affected categories
-              4. Repeat up to 3 times maximum
-            - If still below A- after 3 attempts:
-              - Set QUALITY_PASSED=false (used in Step 7)
+      - name: U6 Commit & PR
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
+          git config user.name "claude[bot]"
+          git config user.email "noreply@anthropic.com"
+          git checkout -b "$BRANCH"
+          git add skills/review/references/ skills/generate/references/ agents/ cron/state/
+          if git diff --cached --quiet; then
+            echo "No changes; skipping PR"
+            exit 0
+          fi
 
-            ## Step 5: Version Bump
+          # 라벨 결정
+          LABELS="automated,criteria-update"
+          if jq -e '.discovered_categories | length > 0' ${{ env.RUN_DIR }}/discovery.json > /dev/null 2>&1; then
+            LABELS="$LABELS,category-discovery"
+          fi
+          if jq -e '.b_signal.regressions | length > 0' ${{ env.RUN_DIR }}/signals.json > /dev/null 2>&1; then
+            LABELS="$LABELS,self-improve-blocked"
+          fi
+          if jq -e '.c_signal.dropped' ${{ env.RUN_DIR }}/signals.json > /dev/null 2>&1; then
+            LABELS="$LABELS,self-improve-blocked"
+          fi
 
-            Determine the bump level based on the scope of changes:
-            - patch: minor edits to existing items, small number of additions
-            - minor: new sections added, many new checklist items
-            - major: category structure changes, large-scale modifications
+          git commit -m "chore: weekly criteria update $(date +%Y-%m-%d)"
+          git push -u origin "$BRANCH"
 
-            1. Read current version from `.claude-plugin/plugin.json`
-            2. Bump the version accordingly
-            3. Update `version` in both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
+          PR_BODY=$(cat <<EOF
+          ## Plan Review
+          $(jq -r '.summary' ${{ env.RUN_DIR }}/plan_review.json)
 
-            ## Step 6: Merge Results into README
+          ## Signals
+          - B (regressions): $(jq -r '.b_signal.regressions | join(", ")' ${{ env.RUN_DIR }}/signals.json)
+          - C (ratio drop): $(jq -r '.c_signal.dropped' ${{ env.RUN_DIR }}/signals.json)
 
-            Read the current README.md.
-            Update the Self-Review section:
-            - Replace the Grade, Issues, Benchmark columns for changed categories only
-            - Keep all other rows exactly as they are
-            - If benchmarks were run, update the Metric table too
-            - Update the version in the section header (e.g. "## Self-Review (v1.6.0)")
+          ## Approved records
+          $(jq -r '.approved_records | length' ${{ env.RUN_DIR }}/plan_review.json) records
 
-            Also update the Features > Review table ("What it checks" column):
-            - For any category whose checklist changed, update the description
-              to reflect the current key check areas (short comma-separated list,
-              matching existing style)
+          ## Rejected records
+          $(jq -r '.rejected_records | length' ${{ env.RUN_DIR }}/plan_review.json) records
+          EOF
+          )
 
-            ## Step 7: Create PR
+          gh pr create \
+            --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
+            --body "$PR_BODY" \
+            --label "$LABELS" \
+            --reviewer KimHance
 
-            Create a pull request using `gh pr create` with:
-            - Title: "chore: update review criteria vX.Y.Z (YYYY-MM-DD)"
-            - Labels: automated, criteria-update
-            - Reviewer: KimHance
-            - Body must include:
-              - Which Claude Code releases were referenced
-              - Which categories were updated and why
-              - Summary of checklist changes
-              - Partial self-review results
-              - Version bump level and reason
-
-            After PR is created:
-            - If QUALITY_PASSED (A- or above):
-              Run `gh pr merge --squash --auto` to enable auto-merge
-            - If NOT QUALITY_PASSED (below A- after 3 retries):
-              Add a review comment on the PR using `gh pr review --comment`:
-              "⚠️ Self-review grade remained below A- after 3 retry attempts.
-              Manual review required for the following categories: [list categories and grades]"
-              Do NOT auto-merge — wait for human review
-          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep,WebFetch"
-
+      - name: U7 Auto-merge (if signals clear)
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # block 라벨 있으면 머지 안 함
+          PR_NUM=$(gh pr list --head "chore/update-review-criteria-$(date +%Y-%m-%d)" --json number --jq '.[0].number')
+          if [ -z "$PR_NUM" ]; then
+            echo "No PR; skipping merge"
+            exit 0
+          fi
+          BLOCKED=$(gh pr view "$PR_NUM" --json labels --jq '.labels | map(.name) | contains(["self-improve-blocked"]) or contains(["plan-review-aborted"])')
+          if [ "$BLOCKED" = "true" ]; then
+            echo "PR blocked by label; manual review needed"
+            exit 0
+          fi
+          gh pr merge "$PR_NUM" --squash --auto
