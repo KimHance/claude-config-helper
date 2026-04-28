@@ -8,3 +8,5 @@ cron/__pycache__
 cron/.pytest_cache
 **/__pycache__
 **/.pytest_cache
+
+**/*.egg-info
