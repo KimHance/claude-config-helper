@@ -1,7 +1,6 @@
 """Schema validator for cchelp criteria items."""
 import json
 from pathlib import Path
-from typing import Iterable
 
 import jsonschema
 import yaml
