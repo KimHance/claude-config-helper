@@ -8,7 +8,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from verifiers.schema_validator import validate_category_file
+import jsonschema
+
+from verifiers.schema_validator import _load_schema
 from verifiers.source_integrity import check_source_integrity
 
 
@@ -19,6 +21,22 @@ def _check_verifier_executable(item: dict) -> tuple[bool, str]:
         if kind == "regex":
             import re
             re.compile(v["pattern"])
+        elif kind == "line-count":
+            if not v.get("target") or not isinstance(v.get("target"), str) or not v["target"].strip():
+                return False, "line-count missing target"
+            if not isinstance(v.get("max"), int) or v["max"] < 1:
+                return False, "line-count max must be integer >= 1"
+        elif kind == "file-exists":
+            if not v.get("target") or not isinstance(v.get("target"), str) or not v["target"].strip():
+                return False, "file-exists missing target"
+        elif kind == "substring":
+            if not v.get("target") or not isinstance(v.get("target"), str) or not v["target"].strip():
+                return False, "substring missing target"
+            if not v.get("needle") or not isinstance(v.get("needle"), str) or not v["needle"].strip():
+                return False, "substring missing needle"
+        elif kind == "shell":
+            if not v.get("command") or not isinstance(v.get("command"), str) or not v["command"].strip():
+                return False, "shell missing command"
         elif kind == "yaml-parse":
             if not v.get("target"):
                 return False, "yaml-parse missing target"
@@ -43,6 +61,7 @@ def main():
 
     plan = json.loads(args.plan.read_text())
     now = datetime.now(timezone.utc)
+    schema = _load_schema()
 
     verdict = {"approved": [], "rejected": []}
 
@@ -55,13 +74,20 @@ def main():
             verdict["rejected"].append({"id": record["item_id"], "check": "schema", "reason": "empty payload"})
             continue
 
+        # Check 2: JSON Schema validation
+        try:
+            jsonschema.validate(item, schema)
+        except jsonschema.ValidationError as e:
+            verdict["rejected"].append({"id": record["item_id"], "check": "schema", "reason": e.message})
+            continue
+
         # Check 1: source integrity
         si = check_source_integrity(item, now=now)
         if not si.ok:
             verdict["rejected"].append({"id": item["id"], "check": "source", "reason": si.reason})
             continue
 
-        # Check 3: verifier executability (skip 2; 2 is JSON Schema validation done at write-time)
+        # Check 3: verifier executability
         ok, reason = _check_verifier_executable(item)
         if not ok:
             verdict["rejected"].append({"id": item["id"], "check": "verifier", "reason": reason})
