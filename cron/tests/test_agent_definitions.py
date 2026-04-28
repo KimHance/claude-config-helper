@@ -30,3 +30,22 @@ def test_self_eval_runner_has_workflow_section():
     assert "## Process" in body or "## Workflow" in body
     assert "verifier" in body.lower()
     assert "no llm judgment" in body.lower() or "no opinion" in body.lower() or "기계" in body
+
+
+def test_plan_reviewer_exists():
+    path = AGENTS_DIR / "plan-reviewer.md"
+    assert path.exists(), f"{path} not found"
+
+
+def test_plan_reviewer_frontmatter():
+    fm = _read_frontmatter(AGENTS_DIR / "plan-reviewer.md")
+    assert fm["name"] == "plan-reviewer"
+    assert fm["model"] in {"opus", "sonnet"}, "reviewer needs strong reasoning model"
+
+
+def test_plan_reviewer_quote_requirement():
+    body = (AGENTS_DIR / "plan-reviewer.md").read_text(encoding="utf-8")
+    # quote-based reasoning 강제 키워드 존재
+    assert "quote" in body.lower()
+    assert "verbatim" in body.lower() or "원문" in body
+    assert "substring" in body.lower()
