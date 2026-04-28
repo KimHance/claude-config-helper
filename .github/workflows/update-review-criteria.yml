@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p ${{ env.RUN_DIR }}/fetched
           PYTHONPATH=. .venv/bin/python -m scripts.run_fetch \
-            --mapping ../criteria-mapping.yml \
+            --mapping ../.github/criteria-mapping.yml \
             --out-dir ${{ env.RUN_DIR }}/fetched
 
       - name: U2 Diff (classify items)
