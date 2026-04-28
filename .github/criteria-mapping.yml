@@ -1,52 +1,74 @@
-# Keyword-to-file mapping for weekly criteria update workflow.
-# Claude uses this to determine which checklist/template files
-# are affected by Claude Code release changes.
+# cchelp criteria-mapping
+# 카테고리별 docs URL 매핑. 봇이 자동 발견한 카테고리는 discovered: true 표기.
+# 이 파일은 cron/scripts/run_fetch.py 가 입력으로 사용.
 
 mappings:
-  - keywords: [hook, event, lifecycle]
-    docs_url: https://code.claude.com/docs/en/hooks
-    review_file: skills/review/references/hooks-checklist.md
-    generate_file: skills/generate/references/hooks-template.md
-    benchmark: false
-
-  - keywords: [skill, frontmatter, SKILL.md]
+  - name: skills
+    keywords: [skill, frontmatter, SKILL.md]
     docs_url: https://code.claude.com/docs/en/skills
-    review_file: skills/review/references/skills-checklist.md
-    generate_file: skills/generate/references/skill-template.md
+    review_file: skills/review/references/skills.yml
+    template_file: skills/generate/references/skill-template.md
     benchmark: true
 
-  - keywords: [agent, subagent]
+  - name: subagents
+    keywords: [agent, subagent]
     docs_url: https://code.claude.com/docs/en/sub-agents
-    review_file: skills/review/references/agents-checklist.md
-    generate_file: skills/generate/references/agent-template.md
+    review_file: skills/review/references/subagents.yml
+    template_file: skills/generate/references/agent-template.md
     benchmark: true
 
-  - keywords: [MCP, transport, server, mcp]
+  - name: hooks
+    keywords: [hook, event, lifecycle]
+    docs_url: https://code.claude.com/docs/en/hooks
+    review_file: skills/review/references/hooks.yml
+    template_file: skills/generate/references/hooks-template.md
+    benchmark: false
+
+  - name: mcp
+    keywords: [MCP, transport, server, mcp]
     docs_url: https://code.claude.com/docs/en/mcp
-    review_file: skills/review/references/mcp-checklist.md
-    generate_file: skills/generate/references/mcp-template.md
+    review_file: skills/review/references/mcp.yml
+    template_file: skills/generate/references/mcp-template.md
     benchmark: false
 
-  - keywords: [memory, MEMORY.md]
+  - name: memory
+    keywords: [memory, MEMORY.md]
     docs_url: https://code.claude.com/docs/en/memory
-    review_file: skills/review/references/memory-checklist.md
-    generate_file: skills/generate/references/memory-template.md
+    review_file: skills/review/references/memory.yml
+    template_file: skills/generate/references/memory-template.md
     benchmark: false
 
-  - keywords: [CLAUDE.md, rules, instructions]
+  - name: claude-md
+    keywords: [CLAUDE.md, rules, instructions]
     docs_url: https://code.claude.com/docs/en/memory
-    review_file: skills/review/references/claude-md-checklist.md
-    generate_file: skills/generate/references/claude-md-template.md
+    review_file: skills/review/references/claude-md.yml
+    template_file: skills/generate/references/claude-md-template.md
     benchmark: false
 
-  - keywords: [command, slash]
+  - name: commands
+    keywords: [command, slash]
     docs_url: https://code.claude.com/docs/en/commands
-    review_file: skills/review/references/commands-checklist.md
-    generate_file: skills/generate/references/command-template.md
+    review_file: skills/review/references/commands.yml
+    template_file: skills/generate/references/command-template.md
     benchmark: false
 
-  - keywords: [settings, permission]
+  - name: settings
+    keywords: [settings, permission]
     docs_url: https://code.claude.com/docs/en/settings
-    review_file: null
-    generate_file: skills/generate/references/settings-template.md
+    review_file: skills/review/references/settings.yml
+    template_file: skills/generate/references/settings-template.md
     benchmark: false
+
+  - name: permissions
+    keywords: [permission, deny, allow]
+    docs_url: https://code.claude.com/docs/en/permissions
+    review_file: skills/review/references/permissions.yml
+    benchmark: false
+    discovered: false
+
+  - name: plugins
+    keywords: [plugin, marketplace]
+    docs_url: https://code.claude.com/docs/en/plugins
+    review_file: skills/review/references/plugins.yml
+    benchmark: false
+    discovered: false
