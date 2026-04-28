@@ -1,0 +1,25 @@
+- id: skill-name-charset
+  type: programmatic
+  proposition: name field matches charset
+  verifier:
+    kind: regex
+    pattern: "^[a-z0-9-]+$"
+  source:
+    url: https://code.claude.com/docs/en/skills#frontmatter-reference
+    fetched_at: "2026-04-29T02:00:00Z"
+    quote: "Lowercase letters, numbers, and hyphens only"
+  severity: critical
+  category: skills
+- id: skill-md-line-budget
+  type: programmatic
+  proposition: SKILL.md is at most 500 lines
+  verifier:
+    kind: line-count
+    target: SKILL.md
+    max: 500
+  source:
+    url: https://code.claude.com/docs/en/skills#add-supporting-files
+    fetched_at: "2026-04-29T02:00:00Z"
+    quote: "Keep SKILL.md under 500 lines"
+  severity: suggestion
+  category: skills
