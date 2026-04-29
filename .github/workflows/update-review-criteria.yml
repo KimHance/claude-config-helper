@@ -201,6 +201,17 @@ jobs:
             --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
             --state-dir state
 
+      - name: Ensure required labels exist
+        if: steps.plan_review_check.outputs.verdict != 'aborted'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          for L in automated criteria-update category-discovery self-improve-blocked plan-review-aborted; do
+            gh label create "$L" --color ededed --description "auto-managed by criteria cron" 2>/dev/null
+          done
+          set -e
+
       - name: U6 Commit & PR
         if: steps.plan_review_check.outputs.verdict != 'aborted'
         env:
@@ -218,40 +229,56 @@ jobs:
 
           # 라벨 결정
           LABELS="automated,criteria-update"
-          if jq -e '.discovered_categories | length > 0' ${{ env.RUN_DIR }}/discovery.json > /dev/null 2>&1; then
+          if [ -f "${{ env.RUN_DIR }}/discovery.json" ] && jq -e '.discovered_categories | length > 0' "${{ env.RUN_DIR }}/discovery.json" > /dev/null 2>&1; then
             LABELS="$LABELS,category-discovery"
           fi
-          if jq -e '.b_signal.regressions | length > 0' ${{ env.RUN_DIR }}/signals.json > /dev/null 2>&1; then
+          if [ -f "${{ env.RUN_DIR }}/signals.json" ] && jq -e '.b_signal.regressions | length > 0' "${{ env.RUN_DIR }}/signals.json" > /dev/null 2>&1; then
             LABELS="$LABELS,self-improve-blocked"
           fi
-          if jq -e '.c_signal.dropped' ${{ env.RUN_DIR }}/signals.json > /dev/null 2>&1; then
+          if [ -f "${{ env.RUN_DIR }}/signals.json" ] && jq -e '.c_signal.dropped == true' "${{ env.RUN_DIR }}/signals.json" > /dev/null 2>&1; then
             LABELS="$LABELS,self-improve-blocked"
           fi
 
           git commit -m "chore: weekly criteria update $(date +%Y-%m-%d)"
           git push -u origin "$BRANCH"
 
+          # heredoc 안에서 jq 가 실패해도 step 이 죽지 않도록 set +e 일시 적용
+          set +e
+          SUMMARY=$(jq -r '.summary // "(no summary)"' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo "(plan_review.json missing)")
+          B_REGR=$(jq -r '.b_signal.regressions | join(", ") // "(none)"' "${{ env.RUN_DIR }}/signals.json" 2>/dev/null || echo "(signals.json missing)")
+          C_DROP=$(jq -r '.c_signal.dropped' "${{ env.RUN_DIR }}/signals.json" 2>/dev/null || echo "(signals.json missing)")
+          APPROVED_N=$(jq -r '(.approved_records // .approved // []) | length' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo 0)
+          REJECTED_N=$(jq -r '(.rejected_records // .rejected // []) | length' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo 0)
+          set -e
+
           PR_BODY=$(cat <<EOF
           ## Plan Review
-          $(jq -r '.summary' ${{ env.RUN_DIR }}/plan_review.json)
+          $SUMMARY
 
           ## Signals
-          - B (regressions): $(jq -r '.b_signal.regressions | join(", ")' ${{ env.RUN_DIR }}/signals.json)
-          - C (ratio drop): $(jq -r '.c_signal.dropped' ${{ env.RUN_DIR }}/signals.json)
+          - B (regressions): $B_REGR
+          - C (ratio drop): $C_DROP
 
           ## Approved records
-          $(jq -r '.approved_records | length' ${{ env.RUN_DIR }}/plan_review.json) records
+          $APPROVED_N records
 
           ## Rejected records
-          $(jq -r '.rejected_records | length' ${{ env.RUN_DIR }}/plan_review.json) records
+          $REJECTED_N records
           EOF
           )
 
-          gh pr create \
+          # reviewer flag 가 셀프 reviewer 일 때 fail 하므로 try, fail 시 빼고 재시도
+          if ! gh pr create \
             --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
             --body "$PR_BODY" \
             --label "$LABELS" \
-            --reviewer KimHance
+            --reviewer KimHance; then
+            echo "Reviewer flag failed (likely self-reviewer); retrying without --reviewer"
+            gh pr create \
+              --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
+              --body "$PR_BODY" \
+              --label "$LABELS"
+          fi
 
       - name: U7 Auto-merge (if signals clear)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
