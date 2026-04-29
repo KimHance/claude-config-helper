@@ -271,18 +271,11 @@ jobs:
           EOF
           )
 
-          # reviewer flag 가 셀프 reviewer 일 때 fail 하므로 try, fail 시 빼고 재시도
-          if ! gh pr create \
+          # self-reviewer 는 의미 없으므로 --reviewer 미사용. PR 작성자 = 봇, 검토자 = 메인테이너 (외부 알림으로 인지)
+          gh pr create \
             --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
             --body "$PR_BODY" \
-            --label "$LABELS" \
-            --reviewer KimHance; then
-            echo "Reviewer flag failed (likely self-reviewer); retrying without --reviewer"
-            gh pr create \
-              --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
-              --body "$PR_BODY" \
-              --label "$LABELS"
-          fi
+            --label "$LABELS"
 
       - name: U7 Auto-merge (if signals clear)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
