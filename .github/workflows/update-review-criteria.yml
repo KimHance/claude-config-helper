@@ -53,7 +53,8 @@ jobs:
         run: |
           PYTHONPATH=. .venv/bin/python -m scripts.run_category_discovery \
             --new-sitemap ${{ env.RUN_DIR }}/fetched/sitemap.txt \
-            --prev-sitemap cron/state/sitemap.snapshot.txt \
+            --prev-sitemap state/sitemap.snapshot.txt \
+            --mapping ../.github/criteria-mapping.yml \
             --out ${{ env.RUN_DIR }}/discovery.json
         continue-on-error: true
 
