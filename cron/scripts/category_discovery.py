@@ -9,12 +9,23 @@ class SitemapDiff:
     removed: list[str]
 
 
+# llms.txt 의 형식은 markdown link list (`- [Title](URL): desc`).
+# 또한 일부 테스트 / 옛 형식은 plain newline-separated URL 목록.
+# 둘 다 대응하기 위해 정규식으로 .md URL 만 추출.
+URL_RE = re.compile(r"https?://[^\s)<>]+\.md")
+
+
+def extract_md_urls(text: str) -> set[str]:
+    """Extract all `.md` URLs from sitemap text (handles both markdown-link and plain formats)."""
+    return set(URL_RE.findall(text))
+
+
 def diff_sitemap(old: str, new: str) -> SitemapDiff:
-    old_set = {line.strip() for line in old.splitlines() if line.strip()}
-    new_set = {line.strip() for line in new.splitlines() if line.strip()}
+    old_urls = extract_md_urls(old)
+    new_urls = extract_md_urls(new)
     return SitemapDiff(
-        added=sorted(new_set - old_set),
-        removed=sorted(old_set - new_set),
+        added=sorted(new_urls - old_urls),
+        removed=sorted(old_urls - new_urls),
     )
 
 

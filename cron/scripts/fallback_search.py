@@ -70,11 +70,10 @@ def resolve_remove_candidate(*, url: str, quote: str) -> FallbackResult:
         sitemap = httpx.get(SITEMAP_URL, follow_redirects=True, timeout=30.0).text
     except httpx.HTTPError:
         sitemap = ""
-    candidates = [
-        line.strip().rstrip(".md")
-        for line in sitemap.splitlines()
-        if line.strip().endswith(".md")
-    ]
+    # llms.txt 는 markdown link 형식. URL 만 추출 후 .md 제거해서 base URL 로 변환.
+    from scripts.category_discovery import extract_md_urls
+
+    candidates = [u[: -len(".md")] for u in extract_md_urls(sitemap)]
     # base slug (마지막 path segment) 가 같은 것들
     base = url.rstrip("/").rsplit("/", 1)[-1]
     for cand in candidates:

@@ -3,6 +3,7 @@ from pathlib import Path
 from scripts.category_discovery import (
     CategoryCandidate,
     diff_sitemap,
+    extract_md_urls,
     is_review_worthy,
 )
 
@@ -10,6 +11,29 @@ from scripts.category_discovery import (
 def test_diff_finds_new_pages():
     old = "https://code.claude.com/docs/en/skills.md\nhttps://code.claude.com/docs/en/hooks.md"
     new = old + "\nhttps://code.claude.com/docs/en/agent-teams.md"
+    diff = diff_sitemap(old, new)
+    assert any("agent-teams" in url for url in diff.added)
+    assert diff.removed == []
+
+
+def test_extract_md_urls_handles_markdown_link_format():
+    """llms.txt 의 실제 형식 (markdown link list)."""
+    body = """# Claude Code Docs
+
+- [Skills](https://code.claude.com/docs/en/skills.md): description here
+- [Hooks](https://code.claude.com/docs/en/hooks.md): another description
+"""
+    urls = extract_md_urls(body)
+    assert "https://code.claude.com/docs/en/skills.md" in urls
+    assert "https://code.claude.com/docs/en/hooks.md" in urls
+    assert len(urls) == 2
+
+
+def test_diff_sitemap_markdown_link_format():
+    """diff_sitemap 이 markdown-link sitemap 에서도 작동해야 함."""
+    old = "- [Skills](https://code.claude.com/docs/en/skills.md): old"
+    new = """- [Skills](https://code.claude.com/docs/en/skills.md): old
+- [Agent Teams](https://code.claude.com/docs/en/agent-teams.md): new"""
     diff = diff_sitemap(old, new)
     assert any("agent-teams" in url for url in diff.added)
     assert diff.removed == []
