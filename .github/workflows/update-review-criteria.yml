@@ -212,67 +212,56 @@ jobs:
           done
           set -e
 
-      - name: U6 Commit & PR
+      - name: U6 Commit & PR (via claude-code-action — same auth path as legacy yaml)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
-          git config user.name "claude[bot]"
-          git config user.email "noreply@anthropic.com"
-          git checkout -b "$BRANCH"
-          git add skills/review/references/ skills/generate/references/ agents/ cron/state/
-          if git diff --cached --quiet; then
-            echo "No changes; skipping PR"
-            exit 0
-          fi
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+          prompt: |
+            너는 cchelp cron pipeline 의 U6 (Commit & PR) 단계.
+            이전 yaml 에서 너 (claude-code-action) 가 직접 git push + gh pr create 를 했고
+            이번에도 동일 auth path (CLAUDE_CODE_OAUTH_TOKEN) 으로 진행한다.
 
-          # 라벨 결정
-          LABELS="automated,criteria-update"
-          if [ -f "${{ env.RUN_DIR }}/discovery.json" ] && jq -e '.discovered_categories | length > 0' "${{ env.RUN_DIR }}/discovery.json" > /dev/null 2>&1; then
-            LABELS="$LABELS,category-discovery"
-          fi
-          if [ -f "${{ env.RUN_DIR }}/signals.json" ] && jq -e '.b_signal.regressions | length > 0' "${{ env.RUN_DIR }}/signals.json" > /dev/null 2>&1; then
-            LABELS="$LABELS,self-improve-blocked"
-          fi
-          if [ -f "${{ env.RUN_DIR }}/signals.json" ] && jq -e '.c_signal.dropped == true' "${{ env.RUN_DIR }}/signals.json" > /dev/null 2>&1; then
-            LABELS="$LABELS,self-improve-blocked"
-          fi
+            수행:
+            1. branch 생성: `chore/update-review-criteria-$(date +%Y-%m-%d)`
+            2. git config user.name "claude[bot]"; user.email "noreply@anthropic.com"
+            3. 다음 디렉토리의 변경 사항 모두 add:
+               - skills/review/references/
+               - skills/generate/references/
+               - agents/
+               - cron/state/
+            4. 변경 사항 없으면 "No changes; skipping PR" 출력 후 정상 종료
+            5. commit 후 push
+            6. PR body 구성 (jq 로 다음 파일에서 추출):
+               - ${{ env.RUN_DIR }}/plan_review.json: `.summary`, `.approved_records|length`, `.rejected_records|length`
+               - ${{ env.RUN_DIR }}/signals.json: `.b_signal.regressions`, `.c_signal.dropped`
+               - ${{ env.RUN_DIR }}/discovery.json: `.discovered_categories|length`
+               누락 필드는 fallback 값 사용 ("(no summary)", "(none)", 0).
+            7. 라벨 결정:
+               - 항상: `automated,criteria-update`
+               - discovered_categories > 0 이면: `+category-discovery`
+               - b_signal.regressions > 0 또는 c_signal.dropped == true 이면: `+self-improve-blocked`
+            8. `gh pr create --title "chore: weekly criteria update $(date +%Y-%m-%d)" --body "..." --label "..."`
+               - --reviewer 사용 X (self-review 거부됨)
 
-          git commit -m "chore: weekly criteria update $(date +%Y-%m-%d)"
-          # actions/checkout 의 extraheader 가 push 에서 거부되는 환경 대응 — URL 에 token 직접 박아 push
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH:$BRANCH"
+            PR body 형식:
+            ```
+            ## Plan Review
+            <summary>
 
-          # heredoc 안에서 jq 가 실패해도 step 이 죽지 않도록 set +e 일시 적용
-          set +e
-          SUMMARY=$(jq -r '.summary // "(no summary)"' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo "(plan_review.json missing)")
-          B_REGR=$(jq -r '.b_signal.regressions | join(", ") // "(none)"' "${{ env.RUN_DIR }}/signals.json" 2>/dev/null || echo "(signals.json missing)")
-          C_DROP=$(jq -r '.c_signal.dropped' "${{ env.RUN_DIR }}/signals.json" 2>/dev/null || echo "(signals.json missing)")
-          APPROVED_N=$(jq -r '(.approved_records // .approved // []) | length' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo 0)
-          REJECTED_N=$(jq -r '(.rejected_records // .rejected // []) | length' "${{ env.RUN_DIR }}/plan_review.json" 2>/dev/null || echo 0)
-          set -e
+            ## Signals
+            - B (regressions): <list>
+            - C (ratio drop): <true|false>
 
-          PR_BODY=$(cat <<EOF
-          ## Plan Review
-          $SUMMARY
+            ## Approved records
+            <N> records
 
-          ## Signals
-          - B (regressions): $B_REGR
-          - C (ratio drop): $C_DROP
-
-          ## Approved records
-          $APPROVED_N records
-
-          ## Rejected records
-          $REJECTED_N records
-          EOF
-          )
-
-          # self-reviewer 는 의미 없으므로 --reviewer 미사용. PR 작성자 = 봇, 검토자 = 메인테이너 (외부 알림으로 인지)
-          gh pr create \
-            --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
-            --body "$PR_BODY" \
-            --label "$LABELS"
+            ## Rejected records
+            <N> records
+            ```
+          allowed_tools: "Bash"
 
       - name: U7 Auto-merge (if signals clear)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
