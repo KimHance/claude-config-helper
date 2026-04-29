@@ -217,6 +217,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # GH_TOKEN 으로 git push 가 작동하도록 credential helper 등록
+          # (actions/checkout 의 default extraheader 가 git push 에서 거부될 때 보완)
+          gh auth setup-git
+
           BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
           git config user.name "claude[bot]"
           git config user.email "noreply@anthropic.com"
