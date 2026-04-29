@@ -217,10 +217,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # GH_TOKEN 으로 git push 가 작동하도록 credential helper 등록
-          # (actions/checkout 의 default extraheader 가 git push 에서 거부될 때 보완)
-          gh auth setup-git
-
           BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
           git config user.name "claude[bot]"
           git config user.email "noreply@anthropic.com"
@@ -244,7 +240,8 @@ jobs:
           fi
 
           git commit -m "chore: weekly criteria update $(date +%Y-%m-%d)"
-          git push -u origin "$BRANCH"
+          # actions/checkout 의 extraheader 가 push 에서 거부되는 환경 대응 — URL 에 token 직접 박아 push
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH:$BRANCH"
 
           # heredoc 안에서 jq 가 실패해도 step 이 죽지 않도록 set +e 일시 적용
           set +e
