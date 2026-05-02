@@ -26,6 +26,20 @@
         "quote": {"type": "string", "minLength": 5}
       }
     },
+    "additional_sources": {
+      "type": "array",
+      "description": "Aggregator dedup 시 priority winner 가 아닌 record 의 source 들. 출처 다중 추적용.",
+      "items": {
+        "type": "object",
+        "required": ["url", "fetched_at", "quote"],
+        "additionalProperties": false,
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "fetched_at": {"type": "string", "format": "date-time"},
+          "quote": {"type": "string", "minLength": 5}
+        }
+      }
+    },
     "verifier": {
       "type": "object",
       "oneOf": [
