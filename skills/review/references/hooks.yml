@@ -1,0 +1,49 @@
+- id: hook-http-error-nonblocking
+  type: qualitative
+  proposition: HTTP hook failures (non-2xx, timeouts, connection errors) are non-blocking
+    and must not be relied on for security enforcement
+  severity: important
+  category: hooks
+  verifier:
+    kind: llm-judge
+    rubric: 'If the hooks config uses HTTP transport (type: http), check whether the
+      hook is used as a security gate (e.g., to block dangerous commands). HTTP hook
+      errors are non-blocking by design, so any security-critical blocking must use
+      command hooks (exit code 2) instead.'
+  source:
+    url: https://code.claude.com/docs/en/hooks
+    fetched_at: '2026-05-02T06:21:45.407391+00:00'
+    quote: non-2xx responses, connection failures, and timeouts all produce non-blocking
+      errors that allow execution to continue
+- id: hook-input-via-stdin
+  type: qualitative
+  proposition: Command hook scripts read the JSON event payload from stdin, not from
+    command-line arguments or environment variables
+  severity: critical
+  category: hooks
+  verifier:
+    kind: llm-judge
+    rubric: Inspect the hook command or script. Verify it reads input from stdin (e.g.,
+      uses sys.stdin, read, $(<&0), or pipes) rather than from $1, $@ or env vars.
+      Hook input arrives exclusively on stdin; a script that ignores stdin will never
+      see the event data.
+  source:
+    url: https://code.claude.com/docs/en/hooks
+    fetched_at: '2026-05-02T06:21:45.407391+00:00'
+    quote: For command hooks, input arrives on stdin
+- id: hook-timeout-default-values
+  type: qualitative
+  proposition: 'Hook timeout values respect the documented defaults: 600s for command
+    hooks, 30s for prompt hooks, 60s for agent hooks'
+  severity: important
+  category: hooks
+  verifier:
+    kind: llm-judge
+    rubric: If the hooks configuration specifies an explicit timeout value, verify
+      it is a reasonable positive integer that does not conflict with documented defaults
+      (600s command, 30s prompt, 60s agent). A timeout of 0 or an extremely short
+      value will cause hooks to fail unexpectedly.
+  source:
+    url: https://code.claude.com/docs/en/hooks
+    fetched_at: '2026-05-02T06:21:45.407391+00:00'
+    quote: 'Defaults: 600 for command, 30 for prompt, 60 for agent'

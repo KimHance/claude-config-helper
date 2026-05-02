@@ -1,0 +1,29 @@
+- id: skill-desc-truncation-aware
+  type: qualitative
+  proposition: Combined description and when_to_use text fits within the 1,536-character
+    skill listing cap
+  severity: important
+  category: skills
+  verifier:
+    kind: llm-judge
+    rubric: Estimate the combined character count of the description and when_to_use
+      frontmatter fields. If together they exceed or approach 1,536 characters, flag
+      it as a problem because the listing is truncated at that limit, causing Claude
+      to miss context about when to invoke the skill.
+  source:
+    url: https://code.claude.com/docs/en/skills
+    fetched_at: '2026-05-02T06:21:44.928882+00:00'
+    quote: 1,536 characters in the skill listing to reduce context usage
+- id: skill-name-charset
+  type: programmatic
+  proposition: Skill name field uses only lowercase letters, numbers, and hyphens,
+    and is at most 64 characters
+  severity: critical
+  category: skills
+  verifier:
+    kind: regex
+    pattern: ^[a-z0-9-]{1,64}$
+  source:
+    url: https://code.claude.com/docs/en/skills
+    fetched_at: '2026-05-02T06:21:44.928882+00:00'
+    quote: Lowercase letters, numbers, and hyphens only (max 64 characters)

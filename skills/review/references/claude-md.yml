@@ -1,0 +1,15 @@
+- id: claude-md-import-depth-limit
+  type: qualitative
+  proposition: Imported files do not chain beyond 5 levels deep, which is the maximum
+    recursion depth
+  severity: suggestion
+  category: claude-md
+  verifier:
+    kind: llm-judge
+    rubric: Trace the import chain starting from CLAUDE.md (or CLAUDE.local.md). Count
+      the maximum depth of nested @imports. If the chain exceeds 5 hops, imports beyond
+      that depth are silently ignored, causing Claude to miss referenced content.
+  source:
+    url: https://code.claude.com/docs/en/memory
+    fetched_at: '2026-05-02T06:21:45.871801+00:00'
+    quote: maximum depth of five hops
