@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cchelp.local/schema/group-result.schema.json",
+  "title": "cchelp Group Sub-Agent Result",
+  "type": "object",
+  "required": ["tab", "group", "status", "records", "empty_pages", "errors"],
+  "additionalProperties": false,
+  "properties": {
+    "tab": {"type": "string", "minLength": 2},
+    "group": {"type": "string", "minLength": 2},
+    "status": {"enum": ["ok", "partial", "failed"]},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "proposition", "verifier", "source", "severity", "category_hint", "page"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "minLength": 3, "maxLength": 80},
+          "type": {"enum": ["programmatic", "qualitative"]},
+          "proposition": {"type": "string", "minLength": 1},
+          "verifier": {"type": "object"},
+          "source": {
+            "type": "object",
+            "required": ["url", "fetched_at", "quote"],
+            "additionalProperties": false,
+            "properties": {
+              "url": {"type": "string", "format": "uri"},
+              "fetched_at": {"type": "string", "format": "date-time"},
+              "quote": {"type": "string", "minLength": 5}
+            }
+          },
+          "severity": {"enum": ["critical", "important", "suggestion"]},
+          "category_hint": {"type": "string", "minLength": 2},
+          "page": {"type": "string", "minLength": 2}
+        }
+      }
+    },
+    "empty_pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["page", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "page": {"type": "string"},
+          "reason": {"type": "string", "minLength": 5},
+          "suspicious": {"type": "boolean"},
+          "patterns_found": {"type": "array", "items": {"type": "string"}},
+          "diagnostic": {"type": "string"}
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["page", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "page": {"type": "string"},
+          "reason": {"type": "string"}
+        }
+      }
+    }
+  }
+}
