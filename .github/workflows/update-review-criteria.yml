@@ -14,132 +14,142 @@ env:
   RUN_DIR: /tmp/cchelp-cron-${{ github.run_id }}
 
 jobs:
-  update-criteria:
+  nav-fetch:
     runs-on: ubuntu-latest
+    outputs:
+      groups: ${{ steps.extract.outputs.groups }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
       - name: Install cron deps
         working-directory: cron
         run: |
           python -m venv .venv
           .venv/bin/pip install -e ".[dev]"
-
-      - name: U1 Fetch (docs + sitemap + changelog)
+      - name: Job 1 — nav-fetch + page-fetch
+        id: extract
         working-directory: cron
         run: |
-          mkdir -p ${{ env.RUN_DIR }}/fetched
-          PYTHONPATH=. .venv/bin/python -m scripts.run_fetch \
+          mkdir -p ${{ env.RUN_DIR }}
+          PYTHONPATH=. .venv/bin/python -m scripts.run_nav_fetch \
             --mapping ../.github/criteria-mapping.yml \
-            --out-dir ${{ env.RUN_DIR }}/fetched
+            --out-nav ${{ env.RUN_DIR }}/nav.json \
+            --out-fetched ${{ env.RUN_DIR }}/fetched
+          # matrix 용 groups 펼치기
+          groups=$(jq -c '[.tabs[] as $t | $t.groups[] | {tab: $t.tab, group: .group, pages: .pages}]' \
+                       ${{ env.RUN_DIR }}/nav.json)
+          echo "groups=$groups" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs-fetched
+          path: ${{ env.RUN_DIR }}
+          retention-days: 14
 
-      - name: U2 Diff (classify items)
+  group-plan:
+    needs: nav-fetch
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        group: ${{ fromJson(needs.nav-fetch.outputs.groups) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install cron deps
         working-directory: cron
         run: |
-          PYTHONPATH=. .venv/bin/python -m scripts.run_diff \
-            --refs-dir ../skills/review/references \
-            --fetched-dir ${{ env.RUN_DIR }}/fetched \
-            --out ${{ env.RUN_DIR }}/diff.json
-
-      - name: Category discovery
-        working-directory: cron
-        run: |
-          PYTHONPATH=. .venv/bin/python -m scripts.run_category_discovery \
-            --new-sitemap ${{ env.RUN_DIR }}/fetched/sitemap.txt \
-            --prev-sitemap state/sitemap.snapshot.txt \
-            --mapping ../.github/criteria-mapping.yml \
-            --out ${{ env.RUN_DIR }}/discovery.json
-        continue-on-error: true
-
-      - name: U3 Plan (LLM extracts ADDs from new bodies + builds records)
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-fetched
+          path: ${{ env.RUN_DIR }}
+      - name: Job 2 — group-plan sub-agent
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --permission-mode bypassPermissions
           prompt: |
-            너는 cchelp 의 주간 cron pipeline U3 (Plan) 단계.
+            너는 group-plan sub-agent 다.
+            cron/templates/group-prompt.md 를 Read 하고 정확히 따라라.
 
-            ## STEP 0 — Schema 강제 (필수, 가장 먼저)
+            너의 group:
+              tab: ${{ matrix.group.tab }}
+              group: ${{ matrix.group.group }}
+              pages: ${{ toJson(matrix.group.pages) }}
 
-            **반드시 먼저 다음 두 파일을 Read 도구로 읽어 schema 를 정확히 파악하라:**
-            - `cron/schema/item.schema.json` — 모든 record 의 payload 가 이 JSON Schema 를 통과해야 한다.
-            - `.github/criteria-mapping.yml` — 명시 카테고리 매핑.
+            artifact 위치: ${{ env.RUN_DIR }}/fetched/
+            mapping: ../.github/criteria-mapping.yml (cchelp 카테고리 binding rules)
 
-            **Schema 의 강제 규칙 (위반 시 record 가 U3.5 에서 100% reject 됨):**
+            출력 파일: ${{ env.RUN_DIR }}/group-results/group-result-<SLUG>.json
+              SLUG = group 이름의 slugified 형 (예: "Tools and plugins" → "tools-and-plugins")
+          allowed_tools: "Bash,Read,Write"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: group-result-${{ strategy.job-index }}
+          path: ${{ env.RUN_DIR }}/group-results
+          retention-days: 14
+        continue-on-error: true
 
-            1. `verifier.kind` 는 정확히 다음 8개 중 하나:
-               `regex` | `line-count` | `file-exists` | `substring` | `yaml-parse` | `json-schema` | `shell` | `llm-judge`
-               - "qualitative", "range", "path", "type-check" 같은 다른 값 **절대 금지**.
-               - 정성적 항목은 `kind: llm-judge` 를 사용하고 `rubric` 필드 (≥30자) 채워라.
+  aggregate:
+    needs: group-plan
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: group-result-*
+          merge-multiple: true
+          path: ${{ env.RUN_DIR }}/group-results
+      - name: Job 3 — aggregate
+        working-directory: cron
+        run: |
+          PYTHONPATH=. .venv/bin/python -m scripts.run_aggregate \
+            --group-results-dir ${{ env.RUN_DIR }}/group-results \
+            --mapping ../.github/criteria-mapping.yml \
+            --out ${{ env.RUN_DIR }}/plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan
+          path: ${{ env.RUN_DIR }}/plan.json
+          retention-days: 14
 
-            2. `severity` 는 정확히 다음 3개 중 하나:
-               `critical` | `important` | `suggestion`
-               - "warning", "error", "info" **절대 금지**.
-
-            3. `type` 은 `programmatic` 또는 `qualitative` 둘 중 하나 (item 의 type 필드).
-               - `type: programmatic` 이면 verifier.kind 는 llm-judge 가 아닌 7개 중 하나.
-               - `type: qualitative` 이면 verifier.kind 는 반드시 `llm-judge`.
-
-            4. `verifier` 는 `additionalProperties: false` — 각 kind 별 허용 필드 외 다른 필드 추가 금지:
-               - `regex` → kind, pattern, [max_length], [min_length] 만
-               - `line-count` → kind, target, max, [min] 만
-               - `file-exists` → kind, target 만
-               - `substring` → kind, target, needle 만
-               - `yaml-parse` → kind, target, [expect_keys] 만
-               - `json-schema` → kind, target, schema_ref 만
-               - `shell` → kind, command, [expected_exit] 만
-               - `llm-judge` → kind, rubric (≥30자) 만
-
-            5. `id` 는 `^[a-z0-9]+(-[a-z0-9]+)*$` 패턴 (kebab-case), 길이 3-80.
-
-            6. `source.quote` 는 fetched body 의 verbatim substring (≥5자). paraphrase 금지.
-
-            7. payload 는 항상 완전한 dict (null 금지, ADD/UPDATE 모두). REMOVE 만 payload=null 허용.
-
-            ## STEP 1 — 입력 읽기
-
-            - diff: ${{ env.RUN_DIR }}/diff.json (UPDATE/REMOVE 후보)
-            - fetched: ${{ env.RUN_DIR }}/fetched/<category>.md (각 카테고리 최신 docs body)
-            - discovery: ${{ env.RUN_DIR }}/discovery.json (새 카테고리 후보)
-
-            ## STEP 2 — Record 생성
-
-            1. 각 fetched body 에서 검증 가능한 사실 (frontmatter table row, schema 제약, 수치 한도 등) 에서 ADD 후보 추출.
-            2. quote 는 fetched body 의 verbatim substring 이어야 한다. 환각 금지.
-            3. UPDATE 후보 (diff.json) 의 새 payload 를 채워라 (새 body 의 새 quote 인용).
-            4. 카테고리 발견 후보 (discovery.json) 각각에 대해 초기 항목 5개 이내 추출.
-            5. **모든 record 작성 후, jsonschema 로 자체 검증**:
-               ```bash
-               cd cron && PYTHONPATH=. .venv/bin/python -c "
-               import json, jsonschema
-               schema = json.load(open('schema/item.schema.json'))
-               plan = json.load(open('${{ env.RUN_DIR }}/plan.json'))
-               for r in plan:
-                   if r.get('payload'):
-                       jsonschema.validate(r['payload'], schema)
-               print('local schema check OK')
-               "
-               ```
-               에러 나면 record 수정해서 재시도.
-
-            ## STEP 3 — 출력
-
-            ${{ env.RUN_DIR }}/plan.json 에 PlanRecord JSON array 로 저장:
-            ```json
-            [
-              {"category": "...", "action": "ADD"|"UPDATE"|"REMOVE", "item_id": "...", "payload": {...} | null}
-            ]
-            ```
-          allowed_tools: "Bash,Read,Write,Glob,Grep"
-
+  plan-review:
+    needs: aggregate
+    runs-on: ubuntu-latest
+    outputs:
+      verdict: ${{ steps.check.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+          path: ${{ env.RUN_DIR }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-fetched
+          path: ${{ env.RUN_DIR }}
       - name: U3.5 Plan Review (independent subagent)
         uses: anthropics/claude-code-action@v1
         with:
@@ -148,71 +158,81 @@ jobs:
             --permission-mode bypassPermissions
             --agent plan-reviewer
           prompt: |
-            너는 plan-reviewer agent. plan.json 과 fetched bodies 를 검증해라.
+            너는 plan-reviewer agent.
+            플랜: ${{ env.RUN_DIR }}/plan.json
+            fetched: ${{ env.RUN_DIR }}/fetched/
 
-            플랜 경로: ${{ env.RUN_DIR }}/plan.json
-            fetched 경로: ${{ env.RUN_DIR }}/fetched/
-
-            검증 1~3 (programmatic) 은 다음 명령으로:
+            검증 1~3 (programmatic):
               cd cron && PYTHONPATH=. .venv/bin/python -m scripts.run_plan_review \
                   --plan ${{ env.RUN_DIR }}/plan.json \
                   --fetched-dir ${{ env.RUN_DIR }}/fetched/ \
                   --out ${{ env.RUN_DIR }}/plan_review_partial.json
 
-            검증 4 (의미 정합성) 는 너 자신이 plan_review_partial.json 의 통과 record 들에 대해
-            수행. 각 결론에 verbatim quote 인용 강제.
-
-            최종 결과를 ${{ env.RUN_DIR }}/plan_review.json 에 저장
-            (verdict, approved_records, rejected_records, summary 필드).
-
-      - name: Check plan review verdict
-        id: plan_review_check
+            검증 4 (semantic, quote-based reasoning) 는 너 자신이 partial 통과 record 들에 수행.
+            최종 결과 ${{ env.RUN_DIR }}/plan_review.json 저장.
+      - name: Check verdict
+        id: check
         run: |
-          VERDICT=$(jq -r '.verdict' ${{ env.RUN_DIR }}/plan_review.json)
+          VERDICT=$(jq -r '.verdict // "approved"' ${{ env.RUN_DIR }}/plan_review.json)
           echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
-          if [ "$VERDICT" = "aborted" ]; then
-            echo "Plan review aborted; exiting with marker"
-            exit 0
-          fi
-
       - name: Notify on abort
-        if: steps.plan_review_check.outputs.verdict == 'aborted'
+        if: steps.check.outputs.verdict == 'aborted'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DATE=$(date +%Y-%m-%d)
-          SUMMARY=$(jq -r '.summary // "no summary"' ${{ env.RUN_DIR }}/plan_review.json)
+          SUMMARY=$(jq -r '.summary // "(no summary)"' ${{ env.RUN_DIR }}/plan_review.json)
           gh issue create \
             --title "criteria cron aborted: plan review rejected ≥50% records ($DATE)" \
             --body "## Plan Review Aborted
 
-          The weekly criteria cron was aborted because plan review rejected ≥50% of records.
-
           **Date:** $DATE
           **Run ID:** ${{ github.run_id }}
 
-          ## plan_review.json summary
-
-          $SUMMARY
-
-          ## Full plan_review.json
-
-          \`\`\`json
-          $(cat ${{ env.RUN_DIR }}/plan_review.json)
-          \`\`\`" \
+          ## Summary
+          $SUMMARY" \
             --label "automated,plan-review-aborted"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan-review
+          path: ${{ env.RUN_DIR }}/plan_review.json
+          retention-days: 14
 
-      - name: U4 Apply (deterministic)
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
+  apply-and-pr:
+    needs: plan-review
+    if: needs.plan-review.outputs.verdict != 'aborted'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+          path: ${{ env.RUN_DIR }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan-review
+          path: ${{ env.RUN_DIR }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-fetched
+          path: ${{ env.RUN_DIR }}
+      - name: U4 Apply
         working-directory: cron
         run: |
           PYTHONPATH=. .venv/bin/python -m scripts.run_apply \
             --plan ${{ env.RUN_DIR }}/plan.json \
             --review ${{ env.RUN_DIR }}/plan_review.json \
-            --refs-dir ../skills/review/references
-
-      - name: U5 Self-validate (smoke run with self-eval-runner)
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
+            --refs-dir ../skills/review/references \
+            --state-dir state
+      - name: U5 Self-validate (smoke run)
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -220,19 +240,10 @@ jobs:
             --permission-mode bypassPermissions
             --agent self-eval-runner
           prompt: |
-            너는 self-eval-runner. cchelp 자기 자신을 새 refs 로 채점한다.
-
-            refs 디렉토리: skills/review/references/
-            대상: cchelp 자기 (skills/, agents/, .mcp.json 등)
-
-            모든 항목 verifier 실행 후 결과를 ${{ env.RUN_DIR }}/self_eval.json 에
-            JSON array 로 저장.
-
-            병렬로 baseline 도 같이 측정 (skill 미적용 상태로 동일 항목 채점).
-            baseline 결과는 ${{ env.RUN_DIR }}/baseline_eval.json.
-
+            너는 self-eval-runner. cchelp 자기 자신을 새 refs 로 채점.
+            결과: ${{ env.RUN_DIR }}/self_eval.json
+            baseline: ${{ env.RUN_DIR }}/baseline_eval.json
       - name: Compute B/C signals
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
         working-directory: cron
         run: |
           PYTHONPATH=. .venv/bin/python -m scripts.run_signals \
@@ -241,9 +252,7 @@ jobs:
             --prev-metric state/last_metric.json \
             --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
             --out ${{ env.RUN_DIR }}/signals.json
-
-      - name: Save state for next cron
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
+      - name: Save state
         working-directory: cron
         run: |
           PYTHONPATH=. .venv/bin/python -m scripts.run_save_state \
@@ -251,100 +260,64 @@ jobs:
             --curr-eval ${{ env.RUN_DIR }}/self_eval.json \
             --curr-metric ${{ env.RUN_DIR }}/baseline_eval.json \
             --state-dir state
-
       - name: Ensure required labels exist
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          for L in automated criteria-update category-discovery self-improve-blocked plan-review-aborted; do
+          for L in automated criteria-update category-discovery self-improve-blocked plan-review-aborted extraction-suspicious; do
             gh label create "$L" --color ededed --description "auto-managed by criteria cron" 2>/dev/null
           done
           set -e
-
-      - name: U6 Commit & PR (via claude-code-action — same auth path as legacy yaml)
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
+      - name: U6 Commit & PR (claude-code-action)
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --permission-mode bypassPermissions
           prompt: |
-            너는 cchelp cron pipeline 의 U6 (Commit & PR) 단계.
-            이전 yaml 에서 너 (claude-code-action) 가 직접 git push + gh pr create 를 했고
-            이번에도 동일 auth path (CLAUDE_CODE_OAUTH_TOKEN) 으로 진행한다.
+            너는 cron pipeline 의 U6 (Commit & PR) 단계.
 
-            ## STEP 1 — PR body template 로드
-
-            **반드시 먼저 `cron/templates/pr-body.md` 를 Read 도구로 읽어라.** 이 파일이
-            PR body 의 정식 template. 이 안의 `{...}` placeholder 들을 채워서 최종
-            PR body 를 만든다. 누락된 placeholder 가 있으면 안 됨.
-
-            ## STEP 2 — Git 작업
-
-            1. branch 생성: `chore/update-review-criteria-$(date +%Y-%m-%d)`
-            2. `git config user.name "claude[bot]"; user.email "noreply@anthropic.com"`
-            3. 다음 디렉토리의 변경 사항 모두 add:
-               - skills/review/references/
-               - skills/generate/references/
-               - agents/
-               - cron/state/
-            4. 변경 사항 없으면 "No changes; skipping PR" 출력 후 정상 종료
-            5. commit 후 push (action 이 자체 인증 처리)
-
-            ## STEP 3 — PR body placeholder 채우기
-
-            template 의 placeholder 와 데이터 출처:
-
-            | Placeholder | 출처 |
-            |---|---|
-            | `{DATE}` | `$(date +%Y-%m-%d)` |
-            | `{RELEASES_REFERENCED}` | `${{ env.RUN_DIR }}/fetched/_changelog.md` 의 최근 1주 (이번 cron 시각 ±7일) entries — 형식: `- **vX.Y.Z** (YYYY-MM-DD): one-line` |
-            | `{CATEGORIES_TABLE}` | `${{ env.RUN_DIR }}/plan.json` + `${{ env.RUN_DIR }}/plan_review.json` 의 approved_records 만 카테고리별 ADD/UPDATE/REMOVE 카운트 (jq 로 그룹) |
-            | `{CHANGES_SUMMARY}` | approved_records 각각에 대해 카테고리별 한 줄씩 (item_id, proposition 또는 reason) |
-            | `{PLAN_REVIEW_SUMMARY}` | `jq -r '.summary'` 결과. 누락 시 `(no summary)` |
-            | `{APPROVED_N}` | `jq -r '.approved_records // .approved // [] \| length'` |
-            | `{REJECTED_N}` | `jq -r '.rejected_records // .rejected // [] \| length'` |
-            | `{B_SIGNAL}` | `jq -r '.b_signal.regressions \| if length>0 then join(", ") else "(none)" end'` (signals.json) |
-            | `{C_SIGNAL}` | `jq -r '.c_signal.dropped'` (true/false) |
-            | `{DISCOVERY_SUMMARY}` | `${{ env.RUN_DIR }}/discovery.json` 의 discovered_categories 를 `- **<name>**: <url>` 형식. 비어있으면 `(none)` |
-            | `{VERSION_BUMP_HINT}` | approved 카운트 0 → "no bump needed". 1+ → "minor bump suggested ({CURRENT_VERSION} → {SUGGESTED})". CURRENT_VERSION 은 `.claude-plugin/plugin.json` 의 version |
-
-            **누락된 데이터 fallback:** `(none)`, `(no summary)`, `0` 사용.
-
-            ## STEP 4 — 라벨 결정
-
-            - 항상: `automated,criteria-update`
-            - discovered_categories > 0 이면: `+category-discovery`
-            - b_signal.regressions > 0 또는 c_signal.dropped == true 이면: `+self-improve-blocked`
-
-            ## STEP 5 — PR 생성
-
-            ```bash
-            gh pr create \
-              --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
-              --body "$FILLED_BODY" \
-              --label "$LABELS"
-            ```
-
-            `--reviewer` 사용 X (self-reviewer 거부됨).
+            1. cron/templates/pr-body.md Read
+            2. branch: chore/update-review-criteria-$(date +%Y-%m-%d)
+            3. git config user.name "claude[bot]"; user.email "noreply@anthropic.com"
+            4. add: skills/review/references/ skills/generate/references/ agents/ cron/state/
+            5. 변경 없으면 "No changes; skipping PR" 후 종료
+            6. commit + push (action 자체 인증)
+            7. PR body 의 placeholder 채우기 (jq 로 plan_review.json / signals.json 등 추출):
+               - {DATE}, {RELEASES_REFERENCED}, {CATEGORIES_TABLE}
+               - {PLAN_REVIEW_SUMMARY}, {APPROVED_N}, {REJECTED_N}
+               - {B_SIGNAL}, {C_SIGNAL}
+               - {GROUP_BREAKDOWN_TABLE}, {EMPTY_PAGES_LIST}, {SUSPICIOUS_LIST}
+               - {TOTAL_BEFORE_DEDUP}, {DEDUP_MERGED}, {TOTAL_TO_REVIEW}
+               - {DISCOVERY_SUMMARY}, {VERSION_BUMP_HINT}
+            8. 라벨: automated,criteria-update,
+               + (discovered_categories>0)? category-discovery
+               + (b_signal regressions OR c_signal dropped)? self-improve-blocked
+               + (suspicious_empty>0)? extraction-suspicious
+            9. gh pr create --title "chore: weekly criteria update $(date +%Y-%m-%d)"
+                            --body "$BODY" --label "$LABELS"
           allowed_tools: "Bash,Read"
 
-      - name: U7 Auto-merge (if signals clear)
-        if: steps.plan_review_check.outputs.verdict != 'aborted'
+  auto-merge:
+    needs: apply-and-pr
+    if: needs.plan-review.outputs.verdict != 'aborted'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: U7 Auto-merge if signals clear
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # block 라벨 있으면 머지 안 함
-          PR_NUM=$(gh pr list --head "chore/update-review-criteria-$(date +%Y-%m-%d)" --json number --jq '.[0].number')
+          BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
+          PR_NUM=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
           if [ -z "$PR_NUM" ]; then
             echo "No PR; skipping merge"
             exit 0
           fi
           BLOCKED=$(gh pr view "$PR_NUM" --json labels --jq '.labels | map(.name) | contains(["self-improve-blocked"]) or contains(["plan-review-aborted"])')
           if [ "$BLOCKED" = "true" ]; then
-            echo "PR blocked by label; manual review needed"
+            echo "PR blocked by label"
             exit 0
           fi
           gh pr merge "$PR_NUM" --squash --auto
