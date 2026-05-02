@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cchelp.local/schema/category-binding.schema.json",
+  "type": "object",
+  "required": ["categories"],
+  "additionalProperties": false,
+  "properties": {
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "bind", "review_file"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "bind": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["tab", "group"],
+              "additionalProperties": false,
+              "properties": {
+                "tab": {"type": "string"},
+                "group": {"type": "string"},
+                "page_filter": {"type": "string"}
+              }
+            }
+          },
+          "review_file": {"type": "string"},
+          "template_file": {"type": "string"},
+          "benchmark": {"type": "boolean"}
+        }
+      }
+    },
+    "excluded_tabs": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "priority": {
+      "type": "object",
+      "required": ["tabs"],
+      "additionalProperties": false,
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        }
+      }
+    }
+  }
+}
