@@ -74,6 +74,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write
           prompt: |
             너는 group-plan sub-agent 다.
             cron/templates/group-prompt.md 를 Read 하고 정확히 따라라.
@@ -88,7 +89,6 @@ jobs:
 
             출력 파일: ${{ env.RUN_DIR }}/group-results/group-result-<SLUG>.json
               SLUG = group 이름의 slugified 형 (예: "Tools and plugins" → "tools-and-plugins")
-          allowed_tools: "Bash,Read,Write"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -275,6 +275,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
             --permission-mode bypassPermissions
+            --allowed-tools Bash,Read
           prompt: |
             너는 cron pipeline 의 U6 (Commit & PR) 단계.
 
@@ -297,10 +298,9 @@ jobs:
                + (suspicious_empty>0)? extraction-suspicious
             9. gh pr create --title "chore: weekly criteria update $(date +%Y-%m-%d)"
                             --body "$BODY" --label "$LABELS"
-          allowed_tools: "Bash,Read"
 
   auto-merge:
-    needs: apply-and-pr
+    needs: [plan-review, apply-and-pr]
     if: needs.plan-review.outputs.verdict != 'aborted'
     runs-on: ubuntu-latest
     steps:
