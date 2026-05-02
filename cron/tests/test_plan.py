@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
-from scripts.diff import ItemStatus
-from scripts.plan import build_plan, PlanRecord
+from scripts.plan import build_plan, PlanRecord, ItemStatus
 
 
 def _item(id_):

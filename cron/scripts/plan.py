@@ -1,8 +1,14 @@
 """U3 Plan: build change records from diff statuses + new additions."""
 from dataclasses import dataclass, asdict
+from enum import Enum
 from typing import Literal
 
-from scripts.diff import ItemStatus
+
+class ItemStatus(str, Enum):
+    """Classification status for items during diff phase."""
+    STABLE = "stable"
+    UPDATE_CANDIDATE = "update_candidate"
+    REMOVE_CANDIDATE = "remove_candidate"
 
 
 @dataclass
