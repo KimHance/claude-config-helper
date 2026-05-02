@@ -67,26 +67,77 @@ jobs:
           prompt: |
             너는 cchelp 의 주간 cron pipeline U3 (Plan) 단계.
 
-            입력:
+            ## STEP 0 — Schema 강제 (필수, 가장 먼저)
+
+            **반드시 먼저 다음 두 파일을 Read 도구로 읽어 schema 를 정확히 파악하라:**
+            - `cron/schema/item.schema.json` — 모든 record 의 payload 가 이 JSON Schema 를 통과해야 한다.
+            - `.github/criteria-mapping.yml` — 명시 카테고리 매핑.
+
+            **Schema 의 강제 규칙 (위반 시 record 가 U3.5 에서 100% reject 됨):**
+
+            1. `verifier.kind` 는 정확히 다음 8개 중 하나:
+               `regex` | `line-count` | `file-exists` | `substring` | `yaml-parse` | `json-schema` | `shell` | `llm-judge`
+               - "qualitative", "range", "path", "type-check" 같은 다른 값 **절대 금지**.
+               - 정성적 항목은 `kind: llm-judge` 를 사용하고 `rubric` 필드 (≥30자) 채워라.
+
+            2. `severity` 는 정확히 다음 3개 중 하나:
+               `critical` | `important` | `suggestion`
+               - "warning", "error", "info" **절대 금지**.
+
+            3. `type` 은 `programmatic` 또는 `qualitative` 둘 중 하나 (item 의 type 필드).
+               - `type: programmatic` 이면 verifier.kind 는 llm-judge 가 아닌 7개 중 하나.
+               - `type: qualitative` 이면 verifier.kind 는 반드시 `llm-judge`.
+
+            4. `verifier` 는 `additionalProperties: false` — 각 kind 별 허용 필드 외 다른 필드 추가 금지:
+               - `regex` → kind, pattern, [max_length], [min_length] 만
+               - `line-count` → kind, target, max, [min] 만
+               - `file-exists` → kind, target 만
+               - `substring` → kind, target, needle 만
+               - `yaml-parse` → kind, target, [expect_keys] 만
+               - `json-schema` → kind, target, schema_ref 만
+               - `shell` → kind, command, [expected_exit] 만
+               - `llm-judge` → kind, rubric (≥30자) 만
+
+            5. `id` 는 `^[a-z0-9]+(-[a-z0-9]+)*$` 패턴 (kebab-case), 길이 3-80.
+
+            6. `source.quote` 는 fetched body 의 verbatim substring (≥5자). paraphrase 금지.
+
+            7. payload 는 항상 완전한 dict (null 금지, ADD/UPDATE 모두). REMOVE 만 payload=null 허용.
+
+            ## STEP 1 — 입력 읽기
+
             - diff: ${{ env.RUN_DIR }}/diff.json (UPDATE/REMOVE 후보)
             - fetched: ${{ env.RUN_DIR }}/fetched/<category>.md (각 카테고리 최신 docs body)
             - discovery: ${{ env.RUN_DIR }}/discovery.json (새 카테고리 후보)
 
-            할 일:
-            1. 각 fetched body 의 frontmatter table / schema row 등 검증 가능한 사실에서
-               ADD 후보를 추출하라. 추출은 다음 schema 를 가진 yaml 항목으로:
-                 - id (kebab-case unique)
-                 - type: programmatic 우선, 정성적이면 qualitative
-                 - proposition, verifier (kind 별 spec), source (url + fetched_at + quote), severity, category
+            ## STEP 2 — Record 생성
+
+            1. 각 fetched body 에서 검증 가능한 사실 (frontmatter table row, schema 제약, 수치 한도 등) 에서 ADD 후보 추출.
             2. quote 는 fetched body 의 verbatim substring 이어야 한다. 환각 금지.
             3. UPDATE 후보 (diff.json) 의 새 payload 를 채워라 (새 body 의 새 quote 인용).
-            4. 카테고리 발견 후보 각각에 대해 빈 references/<category>.yml 추가하고 초기 항목 5개 이내 추출.
-            5. 모든 record 를 ${{ env.RUN_DIR }}/plan.json 에 PlanRecord JSON array 로 저장.
+            4. 카테고리 발견 후보 (discovery.json) 각각에 대해 초기 항목 5개 이내 추출.
+            5. **모든 record 작성 후, jsonschema 로 자체 검증**:
+               ```bash
+               cd cron && PYTHONPATH=. .venv/bin/python -c "
+               import json, jsonschema
+               schema = json.load(open('schema/item.schema.json'))
+               plan = json.load(open('${{ env.RUN_DIR }}/plan.json'))
+               for r in plan:
+                   if r.get('payload'):
+                       jsonschema.validate(r['payload'], schema)
+               print('local schema check OK')
+               "
+               ```
+               에러 나면 record 수정해서 재시도.
 
-            형식:
+            ## STEP 3 — 출력
+
+            ${{ env.RUN_DIR }}/plan.json 에 PlanRecord JSON array 로 저장:
+            ```json
             [
               {"category": "...", "action": "ADD"|"UPDATE"|"REMOVE", "item_id": "...", "payload": {...} | null}
             ]
+            ```
           allowed_tools: "Bash,Read,Write,Glob,Grep"
 
       - name: U3.5 Plan Review (independent subagent)
@@ -224,44 +275,61 @@ jobs:
             이전 yaml 에서 너 (claude-code-action) 가 직접 git push + gh pr create 를 했고
             이번에도 동일 auth path (CLAUDE_CODE_OAUTH_TOKEN) 으로 진행한다.
 
-            수행:
+            ## STEP 1 — PR body template 로드
+
+            **반드시 먼저 `cron/templates/pr-body.md` 를 Read 도구로 읽어라.** 이 파일이
+            PR body 의 정식 template. 이 안의 `{...}` placeholder 들을 채워서 최종
+            PR body 를 만든다. 누락된 placeholder 가 있으면 안 됨.
+
+            ## STEP 2 — Git 작업
+
             1. branch 생성: `chore/update-review-criteria-$(date +%Y-%m-%d)`
-            2. git config user.name "claude[bot]"; user.email "noreply@anthropic.com"
+            2. `git config user.name "claude[bot]"; user.email "noreply@anthropic.com"`
             3. 다음 디렉토리의 변경 사항 모두 add:
                - skills/review/references/
                - skills/generate/references/
                - agents/
                - cron/state/
             4. 변경 사항 없으면 "No changes; skipping PR" 출력 후 정상 종료
-            5. commit 후 push
-            6. PR body 구성 (jq 로 다음 파일에서 추출):
-               - ${{ env.RUN_DIR }}/plan_review.json: `.summary`, `.approved_records|length`, `.rejected_records|length`
-               - ${{ env.RUN_DIR }}/signals.json: `.b_signal.regressions`, `.c_signal.dropped`
-               - ${{ env.RUN_DIR }}/discovery.json: `.discovered_categories|length`
-               누락 필드는 fallback 값 사용 ("(no summary)", "(none)", 0).
-            7. 라벨 결정:
-               - 항상: `automated,criteria-update`
-               - discovered_categories > 0 이면: `+category-discovery`
-               - b_signal.regressions > 0 또는 c_signal.dropped == true 이면: `+self-improve-blocked`
-            8. `gh pr create --title "chore: weekly criteria update $(date +%Y-%m-%d)" --body "..." --label "..."`
-               - --reviewer 사용 X (self-review 거부됨)
+            5. commit 후 push (action 이 자체 인증 처리)
 
-            PR body 형식:
+            ## STEP 3 — PR body placeholder 채우기
+
+            template 의 placeholder 와 데이터 출처:
+
+            | Placeholder | 출처 |
+            |---|---|
+            | `{DATE}` | `$(date +%Y-%m-%d)` |
+            | `{RELEASES_REFERENCED}` | `${{ env.RUN_DIR }}/fetched/_changelog.md` 의 최근 1주 (이번 cron 시각 ±7일) entries — 형식: `- **vX.Y.Z** (YYYY-MM-DD): one-line` |
+            | `{CATEGORIES_TABLE}` | `${{ env.RUN_DIR }}/plan.json` + `${{ env.RUN_DIR }}/plan_review.json` 의 approved_records 만 카테고리별 ADD/UPDATE/REMOVE 카운트 (jq 로 그룹) |
+            | `{CHANGES_SUMMARY}` | approved_records 각각에 대해 카테고리별 한 줄씩 (item_id, proposition 또는 reason) |
+            | `{PLAN_REVIEW_SUMMARY}` | `jq -r '.summary'` 결과. 누락 시 `(no summary)` |
+            | `{APPROVED_N}` | `jq -r '.approved_records // .approved // [] \| length'` |
+            | `{REJECTED_N}` | `jq -r '.rejected_records // .rejected // [] \| length'` |
+            | `{B_SIGNAL}` | `jq -r '.b_signal.regressions \| if length>0 then join(", ") else "(none)" end'` (signals.json) |
+            | `{C_SIGNAL}` | `jq -r '.c_signal.dropped'` (true/false) |
+            | `{DISCOVERY_SUMMARY}` | `${{ env.RUN_DIR }}/discovery.json` 의 discovered_categories 를 `- **<name>**: <url>` 형식. 비어있으면 `(none)` |
+            | `{VERSION_BUMP_HINT}` | approved 카운트 0 → "no bump needed". 1+ → "minor bump suggested ({CURRENT_VERSION} → {SUGGESTED})". CURRENT_VERSION 은 `.claude-plugin/plugin.json` 의 version |
+
+            **누락된 데이터 fallback:** `(none)`, `(no summary)`, `0` 사용.
+
+            ## STEP 4 — 라벨 결정
+
+            - 항상: `automated,criteria-update`
+            - discovered_categories > 0 이면: `+category-discovery`
+            - b_signal.regressions > 0 또는 c_signal.dropped == true 이면: `+self-improve-blocked`
+
+            ## STEP 5 — PR 생성
+
+            ```bash
+            gh pr create \
+              --title "chore: weekly criteria update $(date +%Y-%m-%d)" \
+              --body "$FILLED_BODY" \
+              --label "$LABELS"
             ```
-            ## Plan Review
-            <summary>
 
-            ## Signals
-            - B (regressions): <list>
-            - C (ratio drop): <true|false>
-
-            ## Approved records
-            <N> records
-
-            ## Rejected records
-            <N> records
-            ```
-          allowed_tools: "Bash"
+            `--reviewer` 사용 X (self-reviewer 거부됨).
+          allowed_tools: "Bash,Read"
 
       - name: U7 Auto-merge (if signals clear)
         if: steps.plan_review_check.outputs.verdict != 'aborted'
