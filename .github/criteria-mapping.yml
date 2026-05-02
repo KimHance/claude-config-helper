@@ -1,74 +1,108 @@
-# cchelp criteria-mapping
-# 카테고리별 docs URL 매핑. 봇이 자동 발견한 카테고리는 discovered: true 표기.
-# 이 파일은 cron/scripts/run_fetch.py 가 입력으로 사용.
+# cchelp criteria-mapping (binding rules 형식)
+# 카테고리 → tab/group 매핑. page list 는 mintlify docsConfig 가 자동 갱신.
+# Aggregator 가 record 의 (tab, group, page) 보고 카테고리 binding.
 
-mappings:
+categories:
   - name: skills
-    keywords: [skill, frontmatter, SKILL.md]
-    docs_url: https://code.claude.com/docs/en/skills
+    bind:
+      - tab: "Build with Claude Code"
+        group: "Tools and plugins"
+        page_filter: "skills"
     review_file: skills/review/references/skills.yml
     template_file: skills/generate/references/skill-template.md
     benchmark: true
 
   - name: subagents
-    keywords: [agent, subagent]
-    docs_url: https://code.claude.com/docs/en/sub-agents
+    bind:
+      - tab: "Build with Claude Code"
+        group: "Agents"
     review_file: skills/review/references/subagents.yml
     template_file: skills/generate/references/agent-template.md
     benchmark: true
 
   - name: hooks
-    keywords: [hook, event, lifecycle]
-    docs_url: https://code.claude.com/docs/en/hooks
+    bind:
+      - tab: "Build with Claude Code"
+        group: "Automation"
+        page_filter: "hooks*"
+      - tab: "Reference"
+        group: "Reference"
+        page_filter: "hooks*"
     review_file: skills/review/references/hooks.yml
     template_file: skills/generate/references/hooks-template.md
-    benchmark: false
 
   - name: mcp
-    keywords: [MCP, transport, server, mcp]
-    docs_url: https://code.claude.com/docs/en/mcp
+    bind:
+      - tab: "Build with Claude Code"
+        group: "Tools and plugins"
+        page_filter: "mcp"
     review_file: skills/review/references/mcp.yml
     template_file: skills/generate/references/mcp-template.md
-    benchmark: false
 
   - name: memory
-    keywords: [memory, MEMORY.md]
-    docs_url: https://code.claude.com/docs/en/memory
+    bind:
+      - tab: "Getting started"
+        group: "Use Claude Code"
+        page_filter: "memory"
     review_file: skills/review/references/memory.yml
     template_file: skills/generate/references/memory-template.md
-    benchmark: false
 
   - name: claude-md
-    keywords: [CLAUDE.md, rules, instructions]
-    docs_url: https://code.claude.com/docs/en/memory
+    bind:
+      - tab: "Getting started"
+        group: "Use Claude Code"
+        page_filter: "memory"
     review_file: skills/review/references/claude-md.yml
     template_file: skills/generate/references/claude-md-template.md
-    benchmark: false
 
   - name: commands
-    keywords: [command, slash]
-    docs_url: https://code.claude.com/docs/en/commands
+    bind:
+      - tab: "Reference"
+        group: "Reference"
+        page_filter: "commands"
     review_file: skills/review/references/commands.yml
     template_file: skills/generate/references/command-template.md
-    benchmark: false
 
   - name: settings
-    keywords: [settings, permission]
-    docs_url: https://code.claude.com/docs/en/settings
+    bind:
+      - tab: "Configuration"
+        group: "Settings and permissions"
+        page_filter: "settings"
     review_file: skills/review/references/settings.yml
     template_file: skills/generate/references/settings-template.md
-    benchmark: false
 
   - name: permissions
-    keywords: [permission, deny, allow]
-    docs_url: https://code.claude.com/docs/en/permissions
+    bind:
+      - tab: "Configuration"
+        group: "Settings and permissions"
+        page_filter: "permissions"
     review_file: skills/review/references/permissions.yml
-    benchmark: false
-    discovered: false
 
   - name: plugins
-    keywords: [plugin, marketplace]
-    docs_url: https://code.claude.com/docs/en/plugins
+    bind:
+      - tab: "Build with Claude Code"
+        group: "Tools and plugins"
+        page_filter: "plugins"
+      - tab: "Build with Claude Code"
+        group: "Tools and plugins"
+        page_filter: "discover-plugins"
+      - tab: "Reference"
+        group: "Reference"
+        page_filter: "plugins-reference"
+      - tab: "Administration"
+        group: "Plugin distribution"
+        page_filter: "plugin-marketplaces"
     review_file: skills/review/references/plugins.yml
-    benchmark: false
-    discovered: false
+
+excluded_tabs:
+  - "Agent SDK"
+  - "What's New"
+  - "Resources"
+
+priority:
+  tabs:
+    - "Reference"
+    - "Configuration"
+    - "Administration"
+    - "Build with Claude Code"
+    - "Getting started"
