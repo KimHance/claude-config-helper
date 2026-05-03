@@ -183,16 +183,17 @@ jobs:
         run: |
           DATE=$(date +%Y-%m-%d)
           SUMMARY=$(jq -r '.summary // "(no summary)"' ${{ env.RUN_DIR }}/plan_review.json)
-          gh issue create \
-            --title "criteria cron aborted: plan review rejected ≥50% records ($DATE)" \
-            --body "## Plan Review Aborted
-
-          **Date:** $DATE
-          **Run ID:** ${{ github.run_id }}
-
-          ## Summary
-          $SUMMARY" \
-            --label "automated,plan-review-aborted"
+          BODY=$(printf '## Plan Review Aborted\n\n**Date:** %s\n**Run ID:** %s\n\n## Summary\n%s' \
+                        "$DATE" "${{ github.run_id }}" "$SUMMARY")
+          PAYLOAD=$(jq -n --arg t "criteria cron aborted: plan review rejected ≥50% records ($DATE)" \
+                          --arg b "$BODY" \
+                          '{title:$t, body:$b, labels:["automated","plan-review-aborted"]}')
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/issues" \
+            -d "$PAYLOAD"
       - uses: actions/upload-artifact@v4
         with:
           name: plan-review
@@ -265,11 +266,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set +e
           for L in automated criteria-update category-discovery self-improve-blocked plan-review-aborted extraction-suspicious; do
-            gh label create "$L" --color ededed --description "auto-managed by criteria cron" 2>/dev/null
+            PAYLOAD=$(jq -n --arg n "$L" '{name:$n, color:"ededed", description:"auto-managed by criteria cron"}')
+            curl -sS -o /dev/null -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/labels" \
+              -d "$PAYLOAD" || true
           done
-          set -e
       - name: U6 Commit & PR (claude-code-action)
         uses: anthropics/claude-code-action@v1
         with:
@@ -297,8 +302,21 @@ jobs:
                + (discovered_categories>0)? category-discovery
                + (b_signal regressions OR c_signal dropped)? self-improve-blocked
                + (suspicious_empty>0)? extraction-suspicious
-            9. gh pr create --title "chore: weekly criteria update $(date +%Y-%m-%d)"
-                            --body "$BODY" --label "$LABELS"
+            9. PR 생성/라벨은 GitHub REST API 직접 호출 (gh CLI 금지). 예:
+                 PAYLOAD=$(jq -n --arg t "chore: weekly criteria update $(date +%Y-%m-%d)" \
+                                 --arg b "$BODY" --arg h "$BRANCH" \
+                                 '{title:$t, body:$b, head:$h, base:"main"}')
+                 PR_NUM=$(curl -sS -X POST \
+                   -H "Authorization: Bearer $GITHUB_TOKEN" \
+                   -H "Accept: application/vnd.github+json" \
+                   "https://api.github.com/repos/${{ github.repository }}/pulls" \
+                   -d "$PAYLOAD" | jq -r '.number')
+                 LBL=$(jq -n --argjson l "$LABELS_JSON_ARRAY" '{labels:$l}')
+                 curl -sS -X POST \
+                   -H "Authorization: Bearer $GITHUB_TOKEN" \
+                   -H "Accept: application/vnd.github+json" \
+                   "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUM/labels" \
+                   -d "$LBL"
 
   auto-merge:
     needs: [plan-review, apply-and-pr]
@@ -311,14 +329,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="chore/update-review-criteria-$(date +%Y-%m-%d)"
-          PR_NUM=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
+          OWNER_REPO="${{ github.repository }}"
+          OWNER="${OWNER_REPO%/*}"
+          API="https://api.github.com/repos/$OWNER_REPO"
+          AUTH=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+
+          PR_JSON=$(curl -sS "${AUTH[@]}" "$API/pulls?head=$OWNER:$BRANCH&state=open")
+          PR_NUM=$(echo "$PR_JSON" | jq -r '.[0].number // empty')
           if [ -z "$PR_NUM" ]; then
             echo "No PR; skipping merge"
             exit 0
           fi
-          BLOCKED=$(gh pr view "$PR_NUM" --json labels --jq '.labels | map(.name) | contains(["self-improve-blocked"]) or contains(["plan-review-aborted"])')
-          if [ "$BLOCKED" = "true" ]; then
+
+          LABELS=$(echo "$PR_JSON" | jq -r '.[0].labels | map(.name) | .[]')
+          if echo "$LABELS" | grep -qE '^(self-improve-blocked|plan-review-aborted)$'; then
             echo "PR blocked by label"
             exit 0
           fi
-          gh pr merge "$PR_NUM" --squash --auto
+
+          # squash merge (auto 옵션은 REST 에서 enable_auto_merge GraphQL 필요 — 여기선 즉시 merge 시도)
+          curl -sS -X PUT "${AUTH[@]}" "$API/pulls/$PR_NUM/merge" \
+            -d '{"merge_method":"squash"}'
