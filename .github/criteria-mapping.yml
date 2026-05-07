@@ -39,14 +39,6 @@ categories:
     review_file: skills/review/references/mcp.yml
     template_file: skills/generate/references/mcp-template.md
 
-  - name: memory
-    bind:
-      - tab: "Getting started"
-        group: "Use Claude Code"
-        page_filter: "memory"
-    review_file: skills/review/references/memory.yml
-    template_file: skills/generate/references/memory-template.md
-
   - name: claude-md
     bind:
       - tab: "Getting started"
