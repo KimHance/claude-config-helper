@@ -57,3 +57,96 @@ def merge_by_h2(head: str, sections: Dict[str, str], order: list[str]) -> str:
             parts.append(f"## {name}\n{body}\n")
     out = "".join(parts).rstrip() + "\n"
     return out
+
+
+def apply_report(report: dict, section_names: list[str]) -> dict:
+    """Apply a single oracle JSON report to its rule file.
+
+    Returns stats: {file, changed_sections, total_sections}. Mutates the
+    rule_file on disk only when at least one section is changed.
+    """
+    from pathlib import Path
+
+    rule_path = Path(report["rule_file"])
+    if not rule_path.exists():
+        return {
+            "file": str(rule_path),
+            "changed_sections": 0,
+            "skipped": "missing",
+        }
+
+    original = rule_path.read_text()
+    head, sections = split_by_h2(original)
+
+    sections_in_report: dict = report.get("sections", {}) or {}
+    allowed = set(section_names)
+    changed = 0
+
+    for name in section_names:
+        info = sections_in_report.get(name)
+        if not info:
+            continue
+        if info.get("changed") is True:
+            new_body = info.get("new_body", "")
+            sections[name] = new_body
+            changed += 1
+        # changed: false → leave sections[name] untouched
+
+    # Drop any keys the report invented that are outside section_names
+    for k in list(sections.keys()):
+        if k not in allowed:
+            sections.pop(k)
+
+    new_text = merge_by_h2(head, sections, section_names)
+    if new_text != original:
+        rule_path.write_text(new_text)
+
+    return {
+        "file": str(rule_path),
+        "changed_sections": changed,
+        "total_sections": len(section_names),
+    }
+
+
+def main() -> int:
+    """CLI: apply_oracle_reports.py <reports_dir> <criteria_mapping_yaml>"""
+    import json
+    import sys
+    from pathlib import Path
+
+    import yaml  # local import — keeps split/merge unit tests dependency-free
+
+    if len(sys.argv) != 3:
+        print(
+            "Usage: apply_oracle_reports.py <reports_dir> <criteria_mapping_yaml>",
+            file=sys.stderr,
+        )
+        return 2
+
+    reports_dir = Path(sys.argv[1])
+    mapping = yaml.safe_load(Path(sys.argv[2]).read_text())
+    section_names: list[str] = mapping["section_names"]
+
+    stats: list[dict] = []
+    for report_file in sorted(reports_dir.glob("*.json")):
+        report = json.loads(report_file.read_text())
+        stats.append(apply_report(report, section_names))
+
+    summary = {
+        "files_processed": len(stats),
+        "files_with_changes": sum(
+            1 for s in stats if s.get("changed_sections", 0) > 0
+        ),
+        "total_sections_changed": sum(
+            s.get("changed_sections", 0) for s in stats
+        ),
+        "details": stats,
+    }
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
