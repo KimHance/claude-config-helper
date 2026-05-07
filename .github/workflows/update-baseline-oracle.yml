@@ -148,11 +148,13 @@ jobs:
 
       - name: Apply oracle reports to baselines
         id: apply
+        # 워크스페이스 루트에서 실행해야 도우미가 적은 상대경로
+        # (예: docs/baseline/skills.md) 가 정확히 풀림.
+        # PYTHONPATH=cron 으로 모듈 검색 경로만 추가.
         run: |
-          cd cron
-          .venv/bin/python -m scripts.apply_oracle_reports \
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.apply_oracle_reports \
             ${{ env.REPORTS_DIR }} \
-            ../${{ env.MAPPING_FILE }} \
+            ${{ env.MAPPING_FILE }} \
           | tee /tmp/apply-summary.json
 
       - name: Compute baseline diff
