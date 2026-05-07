@@ -1,0 +1,147 @@
+name: Update Baseline (Oracle)
+
+# 베이스라인 룰 파일을 공식 docs 와 비교해 의미가 달라진 섹션만 갱신.
+# 결과는 artifact 로 회수. PR 생성·라벨링·리뷰어 지정은 후속 스펙.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REPORTS_DIR: /tmp/oracle-reports
+  BASELINE_DIR: docs/baseline
+  MAPPING_FILE: .github/criteria-mapping.yml
+
+jobs:
+  oracle-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: Snapshot baselines (before)
+        run: |
+          mkdir -p /tmp/baseline-before
+          cp -r ${{ env.BASELINE_DIR }}/*.md /tmp/baseline-before/
+
+      - name: Oracle check (claude-code-action spawns claude-code-guide per category)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write,Task,WebFetch,WebSearch
+          prompt: |
+            너는 oracle 메인 세션이다. 목표는 9개 카테고리 룰 파일을 공식 docs
+            기준으로 검토하고, 각 카테고리에 대해 JSON 리포트를 작성하는 것.
+
+            카테고리 목록과 각 룰 파일 경로:
+            - skills           → docs/baseline/skills.md
+            - subagents        → docs/baseline/subagents.md
+            - hooks            → docs/baseline/hooks.md
+            - mcp              → docs/baseline/mcp.md
+            - claude-md        → docs/baseline/claude-md.md
+            - commands         → docs/baseline/commands.md
+            - settings         → docs/baseline/settings.md
+            - permissions      → docs/baseline/permissions.md
+            - plugins          → docs/baseline/plugins.md
+
+            절차 (반드시 이 순서):
+            1) `mkdir -p /tmp/oracle-reports` 를 Bash 로 실행.
+            2) 9개 카테고리 각각에 대해 **동시에** Task tool 을 호출해 도우미를
+               spawn. subagent_type 은 모두 "claude-code-guide".
+               각 도우미한테 전달할 prompt 는 아래 템플릿을 카테고리별로
+               치환한 것:
+
+               ---
+               너는 cchelp review 베이스라인의 <CATEGORY> 카테고리를
+               담당하는 검수 도우미다. 다음 절차를 따라라:
+
+               1. <RULE_FILE> 를 Read.
+               2. <CATEGORY> 와 관련된 공식 Claude Code docs 페이지들을
+                  WebFetch 해서 직접 읽어라
+                  (`https://code.claude.com/docs/en/...`).
+
+                  **풍부하게 탐색할 것 (중요):**
+                  - 메인 페이지 한 곳만 보지 말 것. 같은 카테고리 내용이
+                    여러 페이지에 흩어져 있을 수 있다.
+                  - `https://code.claude.com/docs/en/llms.txt` 의 페이지
+                    목록을 먼저 훑어 관련 페이지를 폭넓게 식별하라.
+                  - 인접 주제 페이지에 그 카테고리에 대한 보충 / 차이점 /
+                    제약이 적혀있을 수 있다 (예: skills 검토 시
+                    sub-agents 의 "preload skills", permissions 의
+                    `Skill(name)` 룰, hooks 의 "hooks in skills and agents",
+                    plugins 의 plugin skill 네임스페이스, commands 의
+                    bundled-skill 분류 등).
+                  - changelog 페이지에서 그 카테고리 관련 추가 / 제거 /
+                    deprecated 항목을 확인하라.
+                  - 적어도 3 ~ 5 개 페이지를 fetch 해야 정상. 1개만 fetch
+                    하면 누락된 사실이 생긴다.
+
+                  **읽지 말아야 할 페이지 (중요):**
+                  - **Agent SDK 관련 모든 페이지는 절대 fetch 하지 말 것.**
+                    경로 `agent-sdk/` 가 들어간 페이지, 또는 SDK ·
+                    programmatic API 만 다루는 페이지는 이 베이스라인의
+                    검토 범위 밖이다.
+                  - SDK 전용 사실 (예: SDK 의 `tools: ["Skill"]` 옵션,
+                    SDK `--system-prompt` 매개변수, SDK 가 skills 를
+                    로드하는 방식 등) 은 baseline 에 포함하지 않는다.
+                  - 인접 페이지에 SDK 섹션이 섞여 있다면 그 섹션은
+                    무시하고 Claude Code (CLI) 관점의 사실만 추출.
+
+               3. 룰 파일의 4개 섹션 (Fundamentals / Advanced /
+                  Recommended / Anti-patterns) 각각에 대해 의미가 공식
+                  docs 와 일치하는지 판정하라.
+                  - 의미가 같으면 changed: false. 어휘·표현·문장구조 차이는
+                    무시. 동의어 swap 절대 금지.
+                  - 공식 docs 가 실제로 의미가 다르거나 / deprecated 됐거나 /
+                    신규 내용이 있어 보강 필요한 경우만 changed: true 로
+                    표시하고 새 본문(new_body)을 작성.
+                  - 확신 없으면 changed: false. 추측·창작 금지.
+               4. 결과를 /tmp/oracle-reports/<CATEGORY>.json 에 다음 schema 로
+                  Write:
+                  {
+                    "category": "<CATEGORY>",
+                    "rule_file": "<RULE_FILE>",
+                    "sections": {
+                      "Fundamentals": { "changed": true|false,
+                                        "new_body": "...섹션 본문...",
+                                        "reason": "...왜 바꿨는지...",
+                                        "sources": ["url1", "url2"] },
+                      "Advanced": { ... },
+                      "Recommended": { ... },
+                      "Anti-patterns": { ... }
+                    }
+                  }
+                  changed: false 인 섹션은 new_body / reason / sources 생략 가능.
+               5. final message 한 줄로 "DONE: /tmp/oracle-reports/<CATEGORY>.json"
+                  이라고만 답해라.
+
+               중요: new_body 에는 헤딩(## ...)을 포함하지 말 것 — 본문만.
+               ---
+
+            3) 9개 도우미 모두 응답이 돌아오면 `ls /tmp/oracle-reports/` 로
+               9개 파일이 모두 만들어졌는지 확인. 누락된 카테고리는 그
+               카테고리만 다시 Task 로 spawn.
+            4) 모두 확인되면 `done: 9 reports` 라고만 출력.
+
+      - name: Show report summaries (debug)
+        if: always()
+        run: |
+          ls -la ${{ env.REPORTS_DIR }} || echo "no reports dir"
+          for f in ${{ env.REPORTS_DIR }}/*.json; do
+            echo "=== $f ==="
+            jq '{category, sections: (.sections | map_values({changed}))}' "$f" 2>/dev/null || cat "$f"
+          done
