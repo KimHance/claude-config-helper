@@ -1,0 +1,60 @@
+name: Test — claude-code-guide availability
+
+# 목적: GitHub Actions 안의 claude-code-action 런타임에서
+# 빌트인 sub-agent `claude-code-guide` 가 Task tool 로 호출 가능한지 확인.
+# 결과는 step output + artifact 로 회수.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe — try Task(subagent_type="claude-code-guide")
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write,Task,WebFetch,WebSearch
+          prompt: |
+            너는 probe agent 다. 목표는 단 하나:
+            **빌트인 sub-agent `claude-code-guide` 가 이 환경에서 Task tool 로 dispatch 가능한지 확인** 한다.
+
+            절차:
+            1) `Task` tool 을 호출한다. 파라미터:
+               - subagent_type: "claude-code-guide"
+               - description: "probe call"
+               - prompt: "Claude Code 의 hooks 종류 한 줄로만 알려줘 (PreToolUse, PostToolUse, ...)."
+            2) 결과 (성공/실패, 실패면 에러 메시지 원문) 를 받아온다.
+            3) 받아온 raw 결과를 그대로 `/tmp/probe-result.json` 에 다음 schema 로 Write 한다:
+               {
+                 "available": true | false,
+                 "raw_response": "...sub-agent 가 돌려준 텍스트 또는 에러 원문...",
+                 "notes": "직접 관찰한 점 (e.g. tool list 에 Task 가 노출됐는지, subagent_type 후보에 claude-code-guide 가 보였는지)"
+               }
+            4) 같은 JSON 을 stdout 에 echo 도 한다 (cat /tmp/probe-result.json).
+
+            추측 금지. Task 호출이 실제 실패하면 available=false 로 적고 raw_response 에 에러 그대로.
+            성공하면 available=true 로 적고 raw_response 에 sub-agent 응답 그대로.
+
+      - name: Show result
+        if: always()
+        run: |
+          echo "=== /tmp/probe-result.json ==="
+          cat /tmp/probe-result.json 2>/dev/null || echo "(file not created — probe step likely failed before Write)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-result
+          path: /tmp/probe-result.json
+          if-no-files-found: warn
+          retention-days: 7
