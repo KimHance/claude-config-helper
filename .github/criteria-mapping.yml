@@ -2,6 +2,15 @@
 # 카테고리 → tab/group 매핑. page list 는 mintlify docsConfig 가 자동 갱신.
 # Aggregator 가 record 의 (tab, group, page) 보고 카테고리 binding.
 
+# 베이스라인 룰 파일의 4섹션 헤딩. oracle 워크플로의 도우미 prompt 와 apply
+# 스크립트가 같은 목록을 읽도록 단일 출처로 둔다. 이름이 바뀌면 모든 베이스라인
+# 파일의 ## 헤딩도 같이 갱신해야 한다.
+section_names:
+  - Fundamentals
+  - Advanced
+  - Recommended
+  - Anti-patterns
+
 categories:
   - name: skills
     bind:
