@@ -145,3 +145,36 @@ jobs:
             echo "=== $f ==="
             jq '{category, sections: (.sections | map_values({changed}))}' "$f" 2>/dev/null || cat "$f"
           done
+
+      - name: Apply oracle reports to baselines
+        id: apply
+        run: |
+          cd cron
+          .venv/bin/python -m scripts.apply_oracle_reports \
+            ${{ env.REPORTS_DIR }} \
+            ../${{ env.MAPPING_FILE }} \
+          | tee /tmp/apply-summary.json
+
+      - name: Compute baseline diff
+        if: always()
+        run: |
+          mkdir -p /tmp/baseline-diff
+          for f in ${{ env.BASELINE_DIR }}/*.md; do
+            base=$(basename "$f")
+            if [ -f "/tmp/baseline-before/$base" ]; then
+              diff -u "/tmp/baseline-before/$base" "$f" > "/tmp/baseline-diff/$base.diff" || true
+            fi
+          done
+          ls -la /tmp/baseline-diff
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oracle-results-${{ github.run_id }}
+          path: |
+            /tmp/oracle-reports/*.json
+            /tmp/apply-summary.json
+            /tmp/baseline-diff/*.diff
+            ${{ env.BASELINE_DIR }}/*.md
+          retention-days: 30
+          if-no-files-found: warn
