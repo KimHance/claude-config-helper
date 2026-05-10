@@ -14,7 +14,7 @@ You are a thin executor. Your only job is to run each criteria item's verifier a
 
 ## Inputs
 
-- **refs_path**: `skills/review/references/<category>.yml` 의 절대 경로
+- **refs_path**: `docs/baseline/<category>.md` 의 절대 경로 (baseline 단일 출처. yml 시절 schema 는 폐기됨 — 본 agent 는 더 이상 yml 파싱 안 함)
 - **target_path**: 검사 대상 (예: `skills/review/SKILL.md`, `agents/reviewer.md`)
 - **target_kind**: `skill` | `agent` | `command` | `hook` | `mcp` | `claude-md` | `memory`
 

@@ -17,7 +17,7 @@ categories:
       - tab: "Build with Claude Code"
         group: "Tools and plugins"
         page_filter: "skills"
-    review_file: skills/review/references/skills.yml
+    review_file: docs/baseline/skills.md
     template_file: skills/generate/references/skill-template.md
     benchmark: true
 
@@ -25,7 +25,7 @@ categories:
     bind:
       - tab: "Build with Claude Code"
         group: "Agents"
-    review_file: skills/review/references/subagents.yml
+    review_file: docs/baseline/subagents.md
     template_file: skills/generate/references/agent-template.md
     benchmark: true
 
@@ -37,7 +37,7 @@ categories:
       - tab: "Reference"
         group: "Reference"
         page_filter: "hooks*"
-    review_file: skills/review/references/hooks.yml
+    review_file: docs/baseline/hooks.md
     template_file: skills/generate/references/hooks-template.md
 
   - name: mcp
@@ -45,7 +45,7 @@ categories:
       - tab: "Build with Claude Code"
         group: "Tools and plugins"
         page_filter: "mcp"
-    review_file: skills/review/references/mcp.yml
+    review_file: docs/baseline/mcp.md
     template_file: skills/generate/references/mcp-template.md
 
   - name: claude-md
@@ -53,7 +53,7 @@ categories:
       - tab: "Getting started"
         group: "Use Claude Code"
         page_filter: "memory"
-    review_file: skills/review/references/claude-md.yml
+    review_file: docs/baseline/claude-md.md
     template_file: skills/generate/references/claude-md-template.md
 
   - name: commands
@@ -61,7 +61,7 @@ categories:
       - tab: "Reference"
         group: "Reference"
         page_filter: "commands"
-    review_file: skills/review/references/commands.yml
+    review_file: docs/baseline/commands.md
     template_file: skills/generate/references/command-template.md
 
   - name: settings
@@ -69,7 +69,7 @@ categories:
       - tab: "Configuration"
         group: "Settings and permissions"
         page_filter: "settings"
-    review_file: skills/review/references/settings.yml
+    review_file: docs/baseline/settings.md
     template_file: skills/generate/references/settings-template.md
 
   - name: permissions
@@ -77,7 +77,7 @@ categories:
       - tab: "Configuration"
         group: "Settings and permissions"
         page_filter: "permissions"
-    review_file: skills/review/references/permissions.yml
+    review_file: docs/baseline/permissions.md
 
   - name: plugins
     bind:
@@ -93,7 +93,7 @@ categories:
       - tab: "Administration"
         group: "Plugin distribution"
         page_filter: "plugin-marketplaces"
-    review_file: skills/review/references/plugins.yml
+    review_file: docs/baseline/plugins.md
 
 excluded_tabs:
   - "Agent SDK"

@@ -11,7 +11,7 @@ Review and generate Claude Code configuration files (CLAUDE.md, skills, agents, 
 - Benchmark **eval execution** (internal, spawned by reviewer in pairs) → `eval-runner` subagent
 - Weekly cron **self-review** (internal, U5 step) → `self-eval-runner` subagent (thin executor)
 - Weekly cron **plan validation** (internal, U3.5 step) → `plan-reviewer` subagent (independent)
-- Review criteria are in `skills/review/references/*.yml` (YAML schema, not prose)
+- Review criteria are in `docs/baseline/*.md` (single source of truth, synced from official Claude Code docs by `.github/workflows/baseline-sync.yml`)
 - Generation templates are in `skills/generate/references/*-template.md`
 
 ## Constraints

@@ -5,7 +5,7 @@ description: Use when reviewing or auditing Claude Code configuration files for 
 
 # Claude Config Review
 
-Evaluation criteria for reviewing Claude Code configuration files. Each category has a detailed checklist in `references/`.
+Evaluation criteria for reviewing Claude Code configuration files. Rules live in `docs/baseline/*.md` — one file per category, kept in sync with the official Claude Code docs by the `baseline-sync` workflow.
 
 ## Modes
 
@@ -16,23 +16,25 @@ Evaluation criteria for reviewing Claude Code configuration files. Each category
 
 1. **Scan** — Total: find all Claude-related files. Target: only the specified path.
 2. **Categorize** — Determine which of the 7 categories are applicable (skip N/A)
-3. **Evaluate** — For each category, load `references/<category>-checklist.md` and check each item
+3. **Evaluate** — For each category, load `docs/baseline/<category>.md` and check the target against every section (Fundamentals / Advanced / Recommended / Anti-patterns). Each bullet in the baseline = one check.
 4. **Cross-validate** — Verify references between files are consistent
-5. **Benchmark** — For Skills and Subagents, spawn `eval-runner` agents in pairs (with-skill + baseline)
-6. **Grade** — Assign A/B/C/D/F per category based on checklist compliance + benchmark results
+5. **Benchmark** — For Skills and Subagents, spawn `eval-runner` agents in pairs (with-skill + baseline). Skip if the agent-spawn tool is not available in the current environment and mark Benchmark as `N/A` in the report.
+6. **Grade** — Assign A/B/C/D/F per category based on baseline compliance + benchmark results
 7. **Report** — Terminal summary table + detailed `docs/claude-config-review-report.md`
 
 ## Categories
 
-| # | Category | Files to Check | Reference |
-|---|----------|---------------|-----------|
-| 1 | CLAUDE.md | `CLAUDE.md`, `**/CLAUDE.md` | `references/claude-md-checklist.md` |
-| 2 | Memory | `~/.claude/projects/*/memory/` | `references/memory-checklist.md` |
-| 3 | Skills | `skills/**/SKILL.md` | `references/skills-checklist.md` |
-| 4 | Subagents | `agents/*.md` | `references/agents-checklist.md` |
-| 5 | Commands | `commands/*.md` | `references/commands-checklist.md` |
-| 6 | Hooks | `hooks/hooks.json`, hook scripts | `references/hooks-checklist.md` |
-| 7 | MCP | `.mcp.json` (project-level) | `references/mcp-checklist.md` |
+| # | Category | Files to Check | Rule Source |
+|---|----------|---------------|-------------|
+| 1 | CLAUDE.md | `CLAUDE.md`, `**/CLAUDE.md` | `docs/baseline/claude-md.md` |
+| 2 | Memory | `~/.claude/projects/*/memory/` | `docs/baseline/claude-md.md` (claude-md baseline covers memory) |
+| 3 | Skills | `skills/**/SKILL.md` | `docs/baseline/skills.md` |
+| 4 | Subagents | `agents/*.md` | `docs/baseline/subagents.md` |
+| 5 | Commands | `commands/*.md` | `docs/baseline/commands.md` |
+| 6 | Hooks | `hooks/hooks.json`, hook scripts | `docs/baseline/hooks.md` |
+| 7 | MCP | `.mcp.json` (project-level) | `docs/baseline/mcp.md` |
+
+> Note: `docs/baseline/` also contains `permissions.md`, `plugins.md`, `settings.md`. Use them as cross-cutting rules during cross-validation.
 
 ## Cross-Validation Checks
 

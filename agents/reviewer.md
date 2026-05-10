@@ -27,7 +27,9 @@ You are a Claude Code Configuration Reviewer. Your job is to audit Claude-relate
 
 ### Step 2: Review Each Category
 
-Invoke the `review` skill to load checklists, then evaluate each found category (1-7). Mark unfound categories as **N/A**.
+For each found category, load `docs/baseline/<category>.md` directly and audit the target against every bullet in the four sections (Fundamentals / Advanced / Recommended / Anti-patterns). The baseline is the authoritative rule source, kept in sync with official Claude Code docs by the `baseline-sync` workflow. Mark unfound categories as **N/A**.
+
+If the agent-spawn tool is unavailable in this environment (no `Agent`/`Task` tool resolvable), continue with checklist-style baseline compliance only and mark Skills/Subagents Benchmark as **N/A** in the report (rows preserved per format spec).
 
 ### Step 3: Cross-Validate
 
