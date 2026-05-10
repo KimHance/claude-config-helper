@@ -73,7 +73,7 @@ def main() -> int:
     prefix = sys.argv[4] if len(sys.argv) >= 5 else ""
     paths = fetch_artifacts(owner, repo, run_id, out_dir, prefix)
     print(json.dumps({"extracted": [str(p) for p in paths]}, indent=2))
-    return 0
+    return 0 if paths else 1
 
 
 if __name__ == "__main__":

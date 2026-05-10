@@ -49,14 +49,26 @@ jobs:
             echo "reports=/tmp/fixture/tmp/oracle-reports" >> $GITHUB_OUTPUT
             echo "diff=/tmp/fixture/tmp/baseline-diff" >> $GITHUB_OUTPUT
           else
-            ART=$(ls -d /tmp/fixture/*-results-* 2>/dev/null | head -1)
+            ART=$(ls -d /tmp/fixture/*-results-* 2>/dev/null | grep -v '\.zip$' | head -1)
             if [ -z "$ART" ]; then
               # fallback: artifact dir without trailing timestamp (e.g. oracle-results-25514207873)
-              ART=$(ls -d /tmp/fixture/*results* 2>/dev/null | head -1)
+              ART=$(ls -d /tmp/fixture/*results* 2>/dev/null | grep -v '\.zip$' | head -1)
             fi
-            echo "summary=$ART/apply-summary.json" >> $GITHUB_OUTPUT
-            echo "reports=$ART/oracle-reports" >> $GITHUB_OUTPUT
-            echo "diff=$ART/baseline-diff" >> $GITHUB_OUTPUT
+            if [ -z "$ART" ]; then
+              echo "ERROR: no artifact directory found under /tmp/fixture" >&2
+              ls -la /tmp/fixture/ >&2 || true
+              exit 1
+            fi
+            # artifact extracts with internal /tmp/... structure
+            if [ -f "$ART/tmp/apply-summary.json" ]; then
+              echo "summary=$ART/tmp/apply-summary.json" >> $GITHUB_OUTPUT
+              echo "reports=$ART/tmp/oracle-reports" >> $GITHUB_OUTPUT
+              echo "diff=$ART/tmp/baseline-diff" >> $GITHUB_OUTPUT
+            else
+              echo "summary=$ART/apply-summary.json" >> $GITHUB_OUTPUT
+              echo "reports=$ART/oracle-reports" >> $GITHUB_OUTPUT
+              echo "diff=$ART/baseline-diff" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: prepare-review-input
