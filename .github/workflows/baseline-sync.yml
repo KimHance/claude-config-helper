@@ -520,16 +520,29 @@ jobs:
               rows.append(f"| {cat} | `{entry['file']}` | {first_reason} |")
               per_file.extend(section_bullets)
 
-          warnings = []
-          if bump_warning:
-              warnings.append("- bump_warning: major bump 인데 diff 가 매우 작음. 정말 major 인지 재검토.")
-          if verdict != "pass":
-              warnings.append(f"- verdict 가 `{verdict}`. self-review 가 의심 신호 보고.")
-          if bench_q:
-              warnings.append("- benchmark 품질 의심: with-skill 점수 < baseline.")
-          if bench_e:
-              warnings.append("- benchmark 효율 의심: with-skill 토큰 > baseline.")
-          warnings_block = ("## 위험 신호\n" + "\n".join(warnings)) if warnings else ""
+          # review_detail: review-summary.md 본문 그대로 임베드. self-review 가
+          # 이미 카테고리별 의심 항목을 markdown 으로 작성해놨으므로 가공 없이
+          # 보여주는 게 가장 친절. 끝의 verdict / bump_level_hint 두 줄은 PR
+          # body 의 다른 섹션과 중복이라 제거.
+          review_detail = ""
+          rs = review_dir / "review-summary.md"
+          if rs.exists():
+              text = rs.read_text().strip()
+              lines = text.splitlines()
+              filtered = [l for l in lines if not l.startswith("verdict:") and not l.startswith("bump_level_hint:")]
+              # 첫 H1 제목 (# Sanity Review Summary 같은 것) 도 PR 본문에선 중복이라 제거
+              if filtered and filtered[0].startswith("# "):
+                  filtered = filtered[1:]
+              review_detail = "\n".join(filtered).strip()
+
+          # benchmark 표 (있으면 그대로 박음. 없으면 섹션 자체 안 그림)
+          bench_table = ""
+          if bench_present:
+              try:
+                  bs = json.loads((review_dir / "bench-summary.json").read_text())
+                  bench_table = bs.get("markdown", "")
+              except Exception:
+                  bench_table = ""
 
           try:
               bump_reason = json.loads((review_dir / "bump.json").read_text()).get("reason", "")
@@ -537,20 +550,16 @@ jobs:
               bump_reason = ""
 
           values = {
-              "RELEASES_BULLETS": "(자동 추출 미구현 — Task 후속에서 changelog parsing 추가)",
               "CHANGED_TABLE_ROWS": "\n".join(rows) if rows else "| — | — | — |",
               "PER_FILE_CHANGE_BULLETS": "\n".join(per_file) if per_file else "변경 없음",
-              "REVIEW_TABLE_ROWS": f"| (전체) | — | verdict={verdict} |",
-              "REVIEW_ISSUES_BLOCK": "",
+              "REVIEW_DETAIL": review_detail,
               "GATE_LABEL": {"pass": "통과", "warn": "경고", "block": "차단"}.get(verdict, verdict),
               "VERDICT": verdict,
-              "BENCH_TABLE": "",
-              "BENCH_SKIPPED": "true" if not bench_present else "",
+              "BENCH_TABLE": bench_table,
               "BUMP_LEVEL": bump_level,
               "OLD_VERSION": old_v,
               "NEW_VERSION": new_v,
               "BUMP_REASON": bump_reason,
-              "WARNINGS": warnings_block,
               "RUN_ID": run_id,
               "ORACLE_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
               "REVIEW_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
