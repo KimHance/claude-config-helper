@@ -39,18 +39,24 @@ Check references between files — CLAUDE.md refs exist, no orphaned agents/skil
 
 ### Step 4: Benchmark Integration
 
-The slash command supplies a `bench_results_path` input. Read each `<name>/grading.json` under that path and integrate into the report's per-skill / per-agent benchmark sections. Each `grading.json` should contain at minimum:
+The slash command supplies `bench_data` inline as a JSON list of grading dicts (in-memory pipeline; no files). Each dict has shape:
 
 ```json
 {
-  "target": "skills/review/SKILL.md",
-  "with_skill": { "pass_rate": 0.90, "avg_tokens": 12345, "avg_duration_ms": 5000 },
-  "baseline":   { "pass_rate": 0.33, "avg_tokens": 23456, "avg_duration_ms": 8000 },
-  "delta":      { "pass_rate": "+57%", "tokens": "-47%", "duration": "-37%" }
+  "category": "<target name>",
+  "aggregate": {
+    "score_with_skill": <float 0.0-1.0>,
+    "score_baseline": <float 0.0-1.0>,
+    "avg_total_with_skill": <int>,
+    "avg_total_baseline": <int>,
+    "token_savings_pct": <float>
+  }
 }
 ```
 
-If `bench_results_path` is the literal string `N/A` or the directory is empty, mark all benchmark cells as `N/A` in the report (rows preserved per format spec). Do not attempt to spawn `eval-runner` or `grader` yourself.
+Integrate into per-skill / per-agent benchmark sections.
+
+If `bench_data` is `[]` or missing, mark all benchmark cells as `N/A` in the report (rows preserved per format spec). Do not attempt to spawn `eval-runner` or `grader` yourself.
 
 ### Step 5: Grade
 

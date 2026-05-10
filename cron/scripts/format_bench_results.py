@@ -5,15 +5,15 @@ import sys
 from pathlib import Path
 
 
-def format_bench(grading_dir: Path) -> dict:
+def format_bench_from_data(gradings: list[dict]) -> dict:
+    """Format bench summary from a list of grading dicts (in-memory path).
+
+    Each item must have shape: {"category": str, "aggregate": {...}}.
+    """
     rows: list[str] = []
     suspicious_q = False
     suspicious_e = False
-    for cat_dir in sorted(p for p in grading_dir.iterdir() if p.is_dir()):
-        gf = cat_dir / "grading.json"
-        if not gf.exists():
-            continue
-        g = json.loads(gf.read_text())
+    for g in sorted(gradings, key=lambda x: x.get("category", "")):
         a = g.get("aggregate", {})
         with_q, base_q = a.get("score_with_skill"), a.get("score_baseline")
         with_t, base_t = a.get("avg_total_with_skill"), a.get("avg_total_baseline")
@@ -37,14 +37,36 @@ def format_bench(grading_dir: Path) -> dict:
     }
 
 
+def format_bench(grading_dir: Path) -> dict:
+    """File-based path. Reads grading.json files from subdirs of grading_dir."""
+    gradings: list[dict] = []
+    for cat_dir in sorted(p for p in grading_dir.iterdir() if p.is_dir()):
+        gf = cat_dir / "grading.json"
+        if not gf.exists():
+            continue
+        gradings.append(json.loads(gf.read_text()))
+    return format_bench_from_data(gradings)
+
+
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("Usage: format_bench_results.py <grading_dir> <out_summary.json>", file=sys.stderr)
-        return 2
-    out = format_bench(Path(sys.argv[1]))
-    Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
-    print(out["markdown"])
-    return 0
+    # Two CLI modes:
+    #   format_bench_results.py <grading_dir> <out_summary.json>   (file-based)
+    #   format_bench_results.py --inline <out_summary.json>         (read JSON list from stdin)
+    if len(sys.argv) == 3 and sys.argv[1] == "--inline":
+        gradings = json.loads(sys.stdin.read())
+        out = format_bench_from_data(gradings)
+        Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
+        print(out["markdown"])
+        return 0
+    if len(sys.argv) == 3:
+        out = format_bench(Path(sys.argv[1]))
+        Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
+        print(out["markdown"])
+        return 0
+    print("Usage: format_bench_results.py <grading_dir> <out_summary.json>\n"
+          "       format_bench_results.py --inline <out_summary.json>  (stdin = JSON list)",
+          file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":
