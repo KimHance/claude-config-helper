@@ -21,7 +21,15 @@ The benchmark step MUST run in the main session because subagents cannot spawn f
 - **Total mode**: `Glob skills/**/SKILL.md`, `Glob agents/*.md`
 - **Target mode**: only the path passed as argument; classify as skill / agent / command / other
 
-### 2. Run benchmarks (parallel, in-memory)
+### 2. Run benchmarks (parallel, in-memory) — MANDATORY when targets exist
+
+Do NOT skip this step. If Step 1 returned any targets (skills or agents), you MUST dispatch eval-runners + graders before proceeding to Step 3. Step 3's reviewer needs `bench_data` from this step.
+
+Skip is acceptable ONLY when:
+- Step 1 returned 0 targets, OR
+- The `Agent` tool is provably unavailable (verify via `ToolSearch select:Agent`).
+
+"Save tokens", "looks complex", "user didn't ask explicitly" — NOT valid reasons to skip. The slash command's purpose is to run audit AND bench together; partial execution defeats the design.
 
 For each skill/agent target found:
 
@@ -53,10 +61,18 @@ The reviewer will:
 - Use the inline `bench_data` to populate per-skill / per-agent benchmark sections in the report
 - Write `docs/claude-config-review-report.md`
 
-### 4. Output to terminal
+### 4. Pre-output verification (MANDATORY)
+
+Before reading the report, verify:
+- If Step 1 returned targets, `bench_data` MUST be a non-empty list of grading dicts.
+- If `bench_data` is empty despite targets existing, you skipped Step 2 — go back and dispatch the missing graders before continuing.
+
+The Benchmark column in the summary table should NEVER show "N/A" when targets exist; it must contain real `score` / `tokens` numbers.
+
+### 5. Output to terminal
 
 After the reviewer returns, **read `docs/claude-config-review-report.md` directly** and output:
-1. Summary table (with Benchmark column)
+1. Summary table (with Benchmark column populated, not N/A)
 2. Top 3 issues
 3. Key observations (if present)
 4. Report file path: `docs/claude-config-review-report.md`
