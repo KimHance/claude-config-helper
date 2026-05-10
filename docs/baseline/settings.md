@@ -5,7 +5,7 @@
 > Update granularity = a single section (one `##` heading). If the meaning is unchanged, the section is left byte-for-byte intact — no rewording, no reordering.
 
 ## Fundamentals
-- Settings are JSON files that configure Claude Code behavior across model, permissions, hooks, environment variables, plugins, and more
+Settings are JSON files that configure Claude Code behavior across model, permissions, hooks, environment variables, plugins, and more
 - Five settings tiers, in precedence order (highest first): managed > `--settings` CLI flag > local (`.claude/settings.local.json`) > project (`.claude/settings.json`) > user (`~/.claude/settings.json`)
 - Local is gitignored (single user, single repo); project is checked into the repo (team-shared); user is per-machine for one user; managed is org-wide IT-deployed
 - Managed settings cannot be overridden by any other tier
@@ -15,9 +15,10 @@
 - Automatic timestamped backups are created for settings files; the 5 most recent are retained
 - The settings JSON does not allow comments (standard JSON, not JSONC)
 - Schema may lag the latest CLI; warnings on recent fields don't invalidate the config
+- Within the managed tier, precedence is server > MDM/OS > file-based (file-based includes drop-in directories `managed-settings.d/*.json` with alphabetic merge and numeric prefixes for ordering)
 
 ## Advanced
-- Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
+Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
 - Permissions keys: `permissions` (object), `allowManagedPermissionRulesOnly` (managed), `disableBypassPermissionsMode`
 - File/directory access keys: `additionalDirectories`, `claudeMdExcludes`, `respectGitignore`, `fileSuggestion`
 - Memory keys: `autoMemoryEnabled`, `autoMemoryDirectory` (latter only honored from managed/user/`--settings`, never from project/local)
@@ -33,19 +34,19 @@
 - Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
 - Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
-- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
+- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
-- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, plus a `.worktreeinclude` file for copying gitignored files into worktrees
+- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, `worktree.baseRef` (choose branch source: `'fresh'` or `'head'`), plus a `.worktreeinclude` file for copying gitignored files into worktrees
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
-- Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
-- Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
+- Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`, includes `refreshInterval` for re-run timing
+- Skills: `skillOverrides` (values `off`/`user-invocable-only`/`name-only`/`on`), `disableSkillShellExecution`
 - Sandbox/security: `sandbox`, `disableSkillShellExecution`
-- Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl` (v2.1.128+)
+- Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl`
 - Session keys: `cleanupPeriodDays` (default 30, min 1), `skipWebFetchPreflight`
 - Windows-only managed: `wslInheritsWindowsSettings`
-- `permissions` object sub-keys: `allow`, `deny`, `ask`, `defaultMode` (`default`/`acceptEdits`/`plan`/`auto`/`dontAsk`/`bypassPermissions`), `additionalDirectories`, `disableBypassPermissionsMode` (`"disable"`), `skipDangerousModePermissionPrompt` (ignored from project settings — security)
+- `permissions` object sub-keys: `allow`, `deny`, `ask`, `defaultMode` (`default`/`acceptEdits`/`plan`/`auto`/`dontAsk`/`bypassPermissions`), `additionalDirectories`, `disableBypassPermissionsMode` (`"disable"`), `disableAutoMode` (`"disable"`), `skipDangerousModePermissionPrompt` (ignored from project settings — security)
 - Permission rule syntax: `Tool` (all), `Tool(specifier)`, e.g., `Bash(npm run *)`, `Read(./.env)`, `Read(./secrets/**)`, `Read(/abs/path)`, `WebFetch(domain:example.com)`, `MCP(server:name)`, `Agent(name)`
 - Permission evaluation: deny → ask → allow, first match wins
 - `env` field: every session gets these env vars; precedence shell > local > project > user > managed; values are always strings
@@ -54,11 +55,12 @@
 - Managed settings delivery: server (Anthropic admin console), MDM/OS policies (macOS plist `com.anthropic.claudecode`, Windows registry `HKLM\SOFTWARE\Policies\ClaudeCode` or `HKCU` for user-level), file-based (`/Library/Application Support/ClaudeCode/managed-settings.json` macOS, `/etc/claude-code/managed-settings.json` Linux/WSL, `C:\Program Files\ClaudeCode\managed-settings.json` Windows v2.1.75+), drop-in directory `managed-settings.d/*.json` (alphabetic merge, numeric prefixes for ordering)
 - Within the managed tier, precedence is server > MDM/OS > file-based
 - `forceRemoteSettingsRefresh` (managed) blocks CLI startup until remote settings fetched (fail-closed)
-- Sandbox object (macOS/Linux/WSL2): `enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed`, `excludedCommands`, `allowUnsandboxedCommands`, plus `filesystem.{allowWrite, denyWrite, denyRead, allowRead, allowManagedReadPathsOnly}`, `network.{allowedDomains, deniedDomains, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowManagedDomainsOnly, httpProxyPort, socksProxyPort}`, `enableWeakerNestedSandbox`, `enableWeakerNetworkIsolation`
+- Sandbox object (macOS/Linux/WSL2): `enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed`, `excludedCommands`, `allowUnsandboxedCommands`, plus `filesystem.{allowWrite, denyWrite, denyRead, allowRead, allowManagedReadPathsOnly}`, `network.{allowedDomains, deniedDomains, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowManagedDomainsOnly, httpProxyPort, socksProxyPort}`, `enableWeakerNestedSandbox`, `enableWeakerNetworkIsolation`, `bwrapPath`, `socatPath` (sandbox binary paths on Linux/WSL)
 - Sandbox path prefixes: `/abs`, `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings)
 - Some keys live in `~/.claude.json` (the global config, not `settings.json`): `autoConnectIde`, `autoInstallIdeExtension`, `externalEditorContext`; this file also holds OAuth session, per-project allowed tools, MCP user/local server configs, caches
 - SSH config (`sshConfigs[]`) is read only from managed and user settings, never from project/local
 - ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`
+- Managed-only settings that cannot be placed in user/project: `allowManagedHooksOnly`, `allowManagedPermissionRulesOnly`, `allowManagedMcpServersOnly`, `disableAutoMode`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `policyHelper`, `parentSettingsBehavior`, `blockedMarketplaces`, `strictKnownMarketplaces`, `channelsEnabled`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `wslInheritsWindowsSettings`
 
 ## Recommended
 - Use `.claude/settings.local.json` (gitignored) for personal overrides without polluting the team's project settings
