@@ -35,7 +35,7 @@
 - shell field sets shell to bash (default) or powershell for !`command` execution
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
-- Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts
+- Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
 - Live change detection for .claude/skills/ directories within current session
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
 - --add-dir included directories have skills/ loaded automatically with live reload

@@ -50,6 +50,8 @@
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
 - Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
+- `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
+- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
 - Hook stdout context injection capped at 10,000 characters per call
 - Settings priority for hooks: managed policy > local (`settings.local.json`) > project (`settings.json`) > user (`~/.claude/settings.json`); plugin hooks merge in alongside
 - `allowManagedHooksOnly` policy blocks user/project/plugin hooks (force-enabled plugins exempt)
@@ -59,8 +61,6 @@
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
 - Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
-- `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
-- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed
