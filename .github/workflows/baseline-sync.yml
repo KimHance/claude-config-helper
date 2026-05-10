@@ -443,7 +443,74 @@ jobs:
           VERDICT=$(grep -E '^verdict: ' /tmp/review-summary.md | head -1 | awk '{print $2}' || echo "pass")
           echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
 
-      - name: format-bench-results (skip if no bench dir)
+      - name: select-bench-targets
+        id: bench-pick
+        run: |
+          # Read changed categories from apply-summary; if "skills" or "subagents"
+          # was changed, that triggers benchmarking ALL files in the corresponding
+          # cchelp directory.
+          CHANGED=$(jq -r '.details[] | select(.changed_sections>0) | .file' \
+            "${{ steps.paths.outputs.summary }}" \
+            | xargs -n1 basename | sed 's/\.md$//' | tr '\n' ' ')
+          TARGETS='[]'
+          if [[ " $CHANGED " == *" skills "* ]]; then
+            for f in skills/*/SKILL.md; do
+              [ -f "$f" ] || continue
+              name=$(basename "$(dirname "$f")")
+              TARGETS=$(jq -c --arg path "$f" --arg name "$name" \
+                '. + [{path: $path, name: $name}]' <<< "$TARGETS")
+            done
+          fi
+          if [[ " $CHANGED " == *" subagents "* ]]; then
+            for f in agents/*.md; do
+              [ -f "$f" ] || continue
+              name=$(basename "$f" .md)
+              TARGETS=$(jq -c --arg path "$f" --arg name "$name" \
+                '. + [{path: $path, name: $name}]' <<< "$TARGETS")
+            done
+          fi
+          COUNT=$(jq length <<< "$TARGETS")
+          echo "targets=$TARGETS" >> $GITHUB_OUTPUT
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Bench targets: $COUNT"
+          echo "$TARGETS" | jq
+
+      - name: run-benchmarks
+        if: steps.bench-pick.outputs.count != '0'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write,Task
+          prompt: |
+            You are the benchmark dispatcher for cchelp baseline-sync JOB 2. Your job is to run with-skill vs baseline benchmarks for each target and write a `grading.json` file per target into `/tmp/bench/<name>/grading.json`.
+
+            Targets to benchmark (JSON list of {path, name} objects):
+            ${{ steps.bench-pick.outputs.targets }}
+
+            For EACH target object in that list, perform exactly these steps:
+
+            1) Bash: `mkdir -p /tmp/bench/<name> /tmp/cchelp-eval-<name>/with_skill /tmp/cchelp-eval-<name>/baseline`
+
+            2) In a SINGLE message, dispatch TWO Task calls in PARALLEL (not sequential):
+               - Task: subagent_type="cchelp:eval-runner", description="bench <name> with_skill",
+                 prompt:
+                   "target_path: <path>\nmode: with_skill\nskill_path: <path>\noutput_dir: /tmp/cchelp-eval-<name>/with_skill/\n\nFollow eval-runner Step 1-5: read target, generate 2-3 test prompts, execute under with_skill mode (load skill via Skill tool), save outputs and eval_metadata.json under output_dir. Report a brief summary."
+               - Task: subagent_type="cchelp:eval-runner", description="bench <name> baseline",
+                 prompt:
+                   "target_path: <path>\nmode: baseline\nskill_path: null\noutput_dir: /tmp/cchelp-eval-<name>/baseline/\n\nFollow eval-runner Step 1-5: read target (only to derive prompts), generate 2-3 test prompts, execute under baseline mode (do NOT load the skill, use general knowledge only), save outputs and eval_metadata.json under output_dir. Report a brief summary."
+
+            3) When both eval-runners complete, parse the `<usage>` block from each agent's response message to extract `total_tokens` (= input + output) and `duration_ms`. Record per run.
+
+            4) Dispatch the grader:
+               - Task: subagent_type="cchelp:grader", description="grade <name>",
+                 prompt:
+                   "with_skill_dir: /tmp/cchelp-eval-<name>/with_skill/\nbaseline_dir: /tmp/cchelp-eval-<name>/baseline/\n\nRead all output files in both directories. Score each output 0.0-1.0 based on whether it correctly addresses its prompt (use the grader's standard rubric). Aggregate per-mode pass rate. Then write `/tmp/bench/<name>/grading.json` with EXACTLY this schema:\n\n{\n  \"category\": \"<name>\",\n  \"aggregate\": {\n    \"score_with_skill\": <float 0.0-1.0>,\n    \"score_baseline\": <float 0.0-1.0>,\n    \"avg_total_with_skill\": <int — supplied by dispatcher>,\n    \"avg_total_baseline\": <int — supplied by dispatcher>,\n    \"token_savings_pct\": <float — supplied by dispatcher>\n  }\n}\n\nFor token fields, use these exact values:\n- avg_total_with_skill: <total_tokens captured from with_skill eval-runner>\n- avg_total_baseline: <total_tokens captured from baseline eval-runner>\n- token_savings_pct: 1 - (avg_total_with_skill / avg_total_baseline) when baseline > 0, else 0\n\nReport DONE when written."
+
+            5) After ALL targets are processed, verify with `ls /tmp/bench/` and output exactly one final line: `BENCH DONE: <N> targets`
+
+      - name: format-bench-results
         run: |
           mkdir -p /tmp/bench
           PYTHONPATH=cron cron/.venv/bin/python -m scripts.format_bench_results \
