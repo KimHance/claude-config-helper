@@ -21,6 +21,7 @@
 - `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt
 - `permissions.disableBypassPermissionsMode: "disable"` blocks bypass mode and `--dangerously-skip-permissions` flag
 - `permissions.disableAutoMode: "disable"` blocks auto mode activation
+- `autoMode.hard_deny` setting unconditionally blocks tool calls regardless of user intent
 - `Bash(*)` ≡ `Bash` (matches all bash); wildcard `*` allowed at any position
 - Bash space-before-`*` enforces word boundary: `Bash(ls *)` matches `ls -la` but not `lsof`; `Bash(ls*)` matches both
 - `Bash(<prefix>:*)` is equivalent to `Bash(<prefix> *)`; the `:*` form is recognized only at the trailing position

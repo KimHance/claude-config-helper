@@ -66,6 +66,7 @@
 - `/powerup` — discover features through interactive lessons
 - `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly to view PR comments instead
 - `/privacy-settings` — view/update privacy settings (Pro/Max only)
+- `/radio` — open Claude FM lo-fi radio in your browser; not available on Bedrock, Vertex, or Foundry
 - `/recap` — one-line summary of current session
 - `/release-notes` — interactive changelog viewer
 - `/reload-plugins` — reload all active plugins without restart

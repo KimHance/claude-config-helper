@@ -10,7 +10,7 @@
 - Manifest fields: `name` (unique identifier and skill namespace), `description`, `version` (optional — falls back to git SHA), `author` (optional)
 - Plugin skills are namespaced as `/<plugin-name>:<skill-name>` to prevent conflicts with other plugins or standalone skills
 - Standalone vs plugin: standalone (`.claude/<dir>/`) is for personal / project-only / quick experiments, with plain skill names; plugin is for sharing, multi-project reuse, versioning, marketplace distribution, with namespaced skill names
-- Plugins are discovered through marketplaces (registered separately) or direct local/url loading via `--plugin-dir <path>` or `--plugin-url <archive-url>`
+- Plugins are discovered through marketplaces (registered separately) or direct local/url loading via `--plugin-dir <path>` (supports both directories and `.zip` archives), `--plugin-url <archive-url>`, or local development with `--plugin-dir`
 - The `/plugin` slash command manages installation, enabling/disabling, listing, and updates
 - After enabling/disabling a plugin or editing plugin files, run `/reload-plugins` to apply changes without restarting
 - The `enabledPlugins` settings key (`{"<plugin>@<marketplace>": true|false}`) is what actually turns plugins on/off; can live in user, project, local, or managed settings
@@ -47,6 +47,7 @@
 - Plugin submission to official Anthropic marketplace: through `claude.ai/settings/plugins/submit` or `platform.claude.com/plugins/submit`
 - Plugins can prompt Claude Code users to install them via "plugin hints" (CLI integration)
 - Marketplaces can be hosted in private repositories for team-internal distribution
+- MCP servers in plugins support `alwaysLoad` option: when `true`, all tools skip tool-search deferral and are always available
 
 ## Recommended
 - Start with standalone (`.claude/`) for quick iteration; convert to a plugin only when ready to share

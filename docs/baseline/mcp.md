@@ -40,6 +40,7 @@
 - For servers without dynamic client registration, register an OAuth app first then pass `--client-id` and `--client-secret`
 - `--callback-port <PORT>` fixes the OAuth callback port for servers requiring a pre-registered redirect URI (`http://localhost:PORT/callback`)
 - `MCP_CLIENT_SECRET` env var supplies the secret in CI / non-interactive contexts
+- HTTP(S)_PROXY / NO_PROXY / mTLS are respected for the full MCP OAuth flow including discovery, dynamic client registration, token exchange, and refresh (v2.1.133+)
 - `headersHelper` field runs an arbitrary shell command at connection time and merges its JSON output into request headers; 10 s timeout, runs fresh on each connection
 - `headersHelper` env vars: `CLAUDE_CODE_MCP_SERVER_NAME`, `CLAUDE_CODE_MCP_SERVER_URL`
 - Project-scoped or local-scoped `headersHelper` runs only after the workspace trust dialog is accepted
