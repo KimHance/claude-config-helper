@@ -1,0 +1,149 @@
+name: Baseline Sync — JOB2 only (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "JOB1 run id (artifact source)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  REPO: ${{ github.repository }}
+
+jobs:
+  job2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: fetch JOB1 artifacts via picker
+        env:
+          CRON_TOKEN_OVERRIDE: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/fixture
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.fetch_run_artifacts \
+            ${{ env.REPO }} ${{ inputs.run_id }} /tmp/fixture baseline-sync-results || \
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.fetch_run_artifacts \
+            ${{ env.REPO }} ${{ inputs.run_id }} /tmp/fixture oracle-results
+          ls -R /tmp/fixture | head -40
+
+      - name: locate fixture paths
+        id: paths
+        run: |
+          # The artifact may extract flat (historical /tmp/...) or under <artifact-name>/.
+          if [ -f /tmp/fixture/tmp/apply-summary.json ]; then
+            echo "summary=/tmp/fixture/tmp/apply-summary.json" >> $GITHUB_OUTPUT
+            echo "reports=/tmp/fixture/tmp/oracle-reports" >> $GITHUB_OUTPUT
+            echo "diff=/tmp/fixture/tmp/baseline-diff" >> $GITHUB_OUTPUT
+          else
+            ART=$(ls -d /tmp/fixture/*-results-* 2>/dev/null | head -1)
+            if [ -z "$ART" ]; then
+              # fallback: artifact dir without trailing timestamp (e.g. oracle-results-25514207873)
+              ART=$(ls -d /tmp/fixture/*results* 2>/dev/null | head -1)
+            fi
+            echo "summary=$ART/apply-summary.json" >> $GITHUB_OUTPUT
+            echo "reports=$ART/oracle-reports" >> $GITHUB_OUTPUT
+            echo "diff=$ART/baseline-diff" >> $GITHUB_OUTPUT
+          fi
+
+      - name: prepare-review-input
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.prepare_review_input \
+            ${{ steps.paths.outputs.summary }} \
+            ${{ steps.paths.outputs.reports }} \
+            ${{ steps.paths.outputs.diff }} \
+            /tmp/review-input.md
+          wc -l /tmp/review-input.md
+
+      - name: self-review + bump (claude)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write
+          prompt: |
+            너는 baseline-sync JOB 2 의 self-review 도우미다.
+
+            입력: /tmp/review-input.md (변경된 카테고리만 묶여 있음)
+
+            절차:
+            1) /tmp/review-input.md 를 Read.
+            2) 각 카테고리의 diff + reasons 를 보고 다음 4개 항목으로 sanity 감사:
+               - 동의어 swap 만 한 변경인지 (의미 같으면 의심)
+               - SDK 사실이 끼어든 흔적이 있는지
+               - 한 섹션 삭제율이 > 50% 인 게 있는지
+               - 모든 reason 이 source URL 을 가졌는지
+            3) verdict 결정 (pass / warn / block).
+               - 1~3 모두 정상이고 4 도 만족 → pass
+               - 의심 신호 1개 이상 → warn
+               - baseline 본문이 통째로 비어있거나 명백히 망가짐 → block
+            4) bump 결정. 다음 rubric:
+               - patch: 표현/예시/오타. 의미 동일.
+               - minor: 신규 사실 추가. 기존 가이드 무력화 없음.
+               - major: 기존 가이드와 충돌, deprecated, 의미 변경.
+            5) 다음 두 파일을 Write:
+               (a) /tmp/review-summary.md — 표 + 카테고리별 한 줄 평 + verdict
+                   markdown 형식. 다음 두 줄을 마지막에 박아라:
+                   `verdict: <pass|warn|block>`
+                   `bump_level_hint: <patch|minor|major>`   (참고용)
+               (b) /tmp/bump.json — 다음 schema 정확히:
+                   {
+                     "level": "patch|minor|major",
+                     "reason": "...한 줄 사유...",
+                     "evidence_files": ["docs/baseline/<cat>.md", ...]
+                   }
+                   evidence_files 에는 실제로 변경된 baseline 파일 경로만 기재.
+            6) 마지막 한 줄로 "DONE" 출력.
+
+      - name: validate-bump
+        id: validate
+        run: |
+          TOTAL=$(wc -l ${{ steps.paths.outputs.diff }}/*.diff 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.validate_bump \
+            /tmp/bump.json ${{ steps.paths.outputs.diff }} $TOTAL > /tmp/bump.validated.json
+          mv /tmp/bump.validated.json /tmp/bump.json
+          cat /tmp/bump.json
+          echo "level=$(jq -r .level /tmp/bump.json)" >> $GITHUB_OUTPUT
+          echo "warning=$(jq -r .bump_warning /tmp/bump.json)" >> $GITHUB_OUTPUT
+
+      - name: apply-bump
+        run: |
+          NEW=$(PYTHONPATH=cron cron/.venv/bin/python -m scripts.apply_bump \
+            .claude-plugin/plugin.json ${{ steps.validate.outputs.level }})
+          echo "new version: $NEW"
+          echo "$NEW" > /tmp/new_version
+
+      - name: format-bench-results (skip if no bench dir)
+        run: |
+          mkdir -p /tmp/bench
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.format_bench_results \
+            /tmp/bench /tmp/bench-summary.json
+          cat /tmp/bench-summary.json
+
+      - name: upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-results-${{ inputs.run_id }}
+          path: |
+            /tmp/review-input.md
+            /tmp/review-summary.md
+            /tmp/bump.json
+            /tmp/bench-summary.json
+            /tmp/new_version
+          if-no-files-found: warn
+          retention-days: 30
