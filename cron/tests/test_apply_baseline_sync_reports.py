@@ -2,7 +2,7 @@ import json
 import textwrap
 from pathlib import Path
 
-from scripts.apply_oracle_reports import apply_report, split_by_h2, merge_by_h2
+from scripts.apply_baseline_sync_reports import apply_report, split_by_h2, merge_by_h2
 
 
 def test_split_by_h2_basic():

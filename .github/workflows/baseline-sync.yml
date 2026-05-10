@@ -1,4 +1,4 @@
-name: Update Baseline (Oracle)
+name: Baseline Sync
 
 # 베이스라인 룰 파일을 공식 docs 와 비교해 의미가 달라진 섹션만 갱신.
 # 결과는 artifact 로 회수. PR 생성·라벨링·리뷰어 지정은 후속 스펙.
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 env:
-  REPORTS_DIR: /tmp/oracle-reports
+  REPORTS_DIR: /tmp/baseline-sync-reports
   BASELINE_DIR: docs/baseline
   MAPPING_FILE: .github/criteria-mapping.yml
 
@@ -36,7 +36,8 @@ jobs:
           mkdir -p /tmp/baseline-before
           cp -r ${{ env.BASELINE_DIR }}/*.md /tmp/baseline-before/
 
-      - name: Oracle check (claude-code-action spawns claude-code-guide per category)
+      - name: Baseline sync check (claude-code-action spawns claude-code-guide per category)
+        id: baseline-sync-check
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -44,7 +45,7 @@ jobs:
             --permission-mode bypassPermissions
             --allowed-tools Bash,Read,Write,Task,WebFetch,WebSearch
           prompt: |
-            너는 oracle 메인 세션이다. 목표는 9개 카테고리 룰 파일을 공식 docs
+            너는 baseline-sync 메인 세션이다. 목표는 9개 카테고리 룰 파일을 공식 docs
             기준으로 검토하고, 각 카테고리에 대해 JSON 리포트를 작성하는 것.
 
             카테고리 목록과 각 룰 파일 경로:
@@ -59,7 +60,7 @@ jobs:
             - plugins          → docs/baseline/plugins.md
 
             절차 (반드시 이 순서):
-            1) `mkdir -p /tmp/oracle-reports` 를 Bash 로 실행.
+            1) `mkdir -p /tmp/baseline-sync-reports` 를 Bash 로 실행.
             2) 9개 카테고리 각각에 대해 **동시에** Task tool 을 호출해 도우미를
                spawn. subagent_type 은 모두 "claude-code-guide".
                각 도우미한테 전달할 prompt 는 아래 템플릿을 카테고리별로
@@ -110,7 +111,7 @@ jobs:
                     신규 내용이 있어 보강 필요한 경우만 changed: true 로
                     표시하고 새 본문(new_body)을 작성.
                   - 확신 없으면 changed: false. 추측·창작 금지.
-               4. 결과를 /tmp/oracle-reports/<CATEGORY>.json 에 다음 schema 로
+               4. 결과를 /tmp/baseline-sync-reports/<CATEGORY>.json 에 다음 schema 로
                   Write:
                   {
                     "category": "<CATEGORY>",
@@ -126,13 +127,13 @@ jobs:
                     }
                   }
                   changed: false 인 섹션은 new_body / reason / sources 생략 가능.
-               5. final message 한 줄로 "DONE: /tmp/oracle-reports/<CATEGORY>.json"
+               5. final message 한 줄로 "DONE: /tmp/baseline-sync-reports/<CATEGORY>.json"
                   이라고만 답해라.
 
                중요: new_body 에는 헤딩(## ...)을 포함하지 말 것 — 본문만.
                ---
 
-            3) 9개 도우미 모두 응답이 돌아오면 `ls /tmp/oracle-reports/` 로
+            3) 9개 도우미 모두 응답이 돌아오면 `ls /tmp/baseline-sync-reports/` 로
                9개 파일이 모두 만들어졌는지 확인. 누락된 카테고리는 그
                카테고리만 다시 Task 로 spawn.
             4) 모두 확인되면 `done: 9 reports` 라고만 출력.
@@ -146,13 +147,13 @@ jobs:
             jq '{category, sections: (.sections | map_values({changed}))}' "$f" 2>/dev/null || cat "$f"
           done
 
-      - name: Apply oracle reports to baselines
+      - name: Apply baseline-sync reports to baselines
         id: apply
         # 워크스페이스 루트에서 실행해야 도우미가 적은 상대경로
         # (예: docs/baseline/skills.md) 가 정확히 풀림.
         # PYTHONPATH=cron 으로 모듈 검색 경로만 추가.
         run: |
-          PYTHONPATH=cron cron/.venv/bin/python -m scripts.apply_oracle_reports \
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.apply_baseline_sync_reports \
             ${{ env.REPORTS_DIR }} \
             ${{ env.MAPPING_FILE }} \
           | tee /tmp/apply-summary.json
@@ -172,9 +173,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: oracle-results-${{ github.run_id }}
+          name: baseline-sync-results-${{ github.run_id }}
           path: |
-            /tmp/oracle-reports/*.json
+            /tmp/baseline-sync-reports/*.json
             /tmp/apply-summary.json
             /tmp/baseline-diff/*.diff
             ${{ env.BASELINE_DIR }}/*.md

@@ -1,6 +1,6 @@
-"""Oracle JSON reports → baseline file patcher.
+"""Baseline-sync JSON reports → baseline file patcher.
 
-Reads JSON reports produced by the oracle-check step, splits each baseline
+Reads JSON reports produced by the baseline-sync-check step, splits each baseline
 markdown file by ## headings, replaces only the sections marked
 `changed: true`, and writes the file back. Sections marked `changed: false`
 or absent from the report are left byte-for-byte unchanged.
@@ -109,7 +109,7 @@ def apply_report(report: dict, section_names: list[str]) -> dict:
 
 
 def main() -> int:
-    """CLI: apply_oracle_reports.py <reports_dir> <criteria_mapping_yaml>"""
+    """CLI: apply_baseline_sync_reports.py <reports_dir> <criteria_mapping_yaml>"""
     import json
     import sys
     from pathlib import Path
@@ -118,7 +118,7 @@ def main() -> int:
 
     if len(sys.argv) != 3:
         print(
-            "Usage: apply_oracle_reports.py <reports_dir> <criteria_mapping_yaml>",
+            "Usage: apply_baseline_sync_reports.py <reports_dir> <criteria_mapping_yaml>",
             file=sys.stderr,
         )
         return 2
