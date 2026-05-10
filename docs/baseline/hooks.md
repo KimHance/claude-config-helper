@@ -15,6 +15,10 @@
 - Other non-zero exit codes = non-blocking error; stderr shown to user and debug log
 - Hooks fire automatically; the user does not invoke them directly
 - Hooks defined in skill/agent frontmatter are scoped to that component's lifetime and cleaned up automatically when it finishes
+- `PostToolUse` hooks can replace tool output for all tools via `hookSpecificOutput.updatedToolOutput` (v2.1.121+)
+- `PostToolUse` and `PostToolUseFailure` hook inputs include `duration_ms` for tool execution time (v2.1.119+)
+- `UserPromptSubmit` hooks can set the session title via `hookSpecificOutput.sessionTitle` (v2.1.122+)
+- All hooks receive the active effort level via `effort.level` in the hook input JSON and `$CLAUDE_EFFORT` environment variable (v2.1.119+)
 
 ## Advanced
 - Hook event categories: session lifecycle, per-turn prompts, tool execution, permissions, file/config changes, context compaction, worktrees, tasks, subagents, MCP elicitation, notifications
@@ -41,7 +45,7 @@
 - Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
 - `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
-- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
+- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`; all hooks include `effort.level` (v2.1.119+)
 - Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution

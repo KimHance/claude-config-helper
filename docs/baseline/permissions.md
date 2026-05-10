@@ -53,6 +53,8 @@
 - Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`
 - `disableBypassPermissionsMode` works from any scope — a user can lock themselves out
 - Sandbox interaction: when sandbox enabled with `autoAllowBashIfSandboxed: true` (default), sandboxed Bash runs without prompts even with `ask: Bash(*)`; explicit deny still applies; `rm`/`rmdir` against `/`, home, or critical system paths still prompts
+- Bash deny rules match commands wrapped in `env`/`sudo`/`watch`/`ionice`/`setsid` and similar exec wrappers, providing an additional enforcement layer for dangerous operations
+- On macOS, `/private/{etc,var,tmp,home}` paths are treated as dangerous removal targets under `Bash(rm:*)` allow rules
 
 ## Recommended
 - Use deny rules sparingly but decisively for secrets, credentials, and dangerous commands (`Read(./.env)`, `Read(./secrets/**)`, `Bash(curl *)`, `Bash(wget *)`)
