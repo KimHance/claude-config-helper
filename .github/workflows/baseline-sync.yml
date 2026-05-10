@@ -584,6 +584,23 @@ jobs:
           except Exception:
               old_v = "0.0.0"
 
+          def fmt_reason(r):
+              # reason can be string OR list of strings (new prompt allows list)
+              if isinstance(r, list):
+                  if not r:
+                      return ""
+                  if len(r) == 1:
+                      return str(r[0]).strip("- ").strip()
+                  return "<br>".join("• " + str(x).strip("- ").strip() for x in r)
+              return str(r or "")
+
+          def fmt_reason_bullets(r):
+              # for the bullet section: each fact on its own line
+              if isinstance(r, list):
+                  return [str(x).strip("- ").strip() for x in r if str(x).strip()]
+              s = str(r or "").strip()
+              return [s] if s else []
+
           rows = []
           per_file = []
           for entry in summary.get("details", []):
@@ -592,16 +609,18 @@ jobs:
               if ns <= 0:
                   continue
               rep_path = reports_dir / f"{cat}.json"
-              first_reason = ""
+              first_reason_cell = ""
               section_bullets = []
               if rep_path.exists():
                   rep = json.loads(rep_path.read_text())
                   for sec, info in (rep.get("sections") or {}).items():
                       if info.get("changed"):
-                          if not first_reason:
-                              first_reason = info.get("reason", "")
-                          section_bullets.append(f"- **{cat}/{sec}**: {info.get('reason','')}")
-              rows.append(f"| {cat} | `{entry['file']}` | {first_reason} |")
+                          raw = info.get("reason", "")
+                          if not first_reason_cell:
+                              first_reason_cell = fmt_reason(raw)
+                          for fact in fmt_reason_bullets(raw):
+                              section_bullets.append(f"- **{cat}/{sec}**: {fact}")
+              rows.append(f"| {cat} | `{entry['file']}` | {first_reason_cell} |")
               per_file.extend(section_bullets)
 
           # review_detail: review-summary.md 본문 그대로 임베드. self-review 가
