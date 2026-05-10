@@ -1,12 +1,14 @@
 {
   "name": "cchelp",
   "description": "Claude Code configuration helper plugin",
-  "owner": { "name": "KimHance" },
+  "owner": {
+    "name": "KimHance"
+  },
   "plugins": [
     {
       "name": "cchelp",
       "description": "Review and generate Claude Code configuration files for quality and best practices",
-      "version": "2.0.2",
+      "version": "3.0.0",
       "source": "./"
     }
   ]
