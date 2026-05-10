@@ -43,6 +43,7 @@
 - Subagent file edits to disk require session restart; `/agents` interface changes apply immediately
 - Resolution order for the model: `CLAUDE_CODE_SUBAGENT_MODEL` env var > per-invocation `model` parameter > frontmatter `model` > main conversation's model
 - Subagents support hooks `PreToolUse`, `PostToolUse`, and `Stop` (converted to `SubagentStop` at runtime); main session can also subscribe via `SubagentStart`/`SubagentStop` in `settings.json`
+- Hooks receive the active effort level via `effort.level` JSON input field and `$CLAUDE_EFFORT` environment variable
 - Subagent transcripts persist at `~/.claude/projects/{project}/{sessionId}/subagents/agent-{agentId}.jsonl`, independent of main conversation, cleaned per `cleanupPeriodDays` (default 30)
 - Subagents support auto-compaction at ~95% capacity by default; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` lowers the threshold
 - Foreground subagents block main conversation; background subagents pre-approve permissions before launch and auto-deny anything not pre-approved
