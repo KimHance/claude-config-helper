@@ -15,6 +15,8 @@
 - Other non-zero exit codes = non-blocking error; stderr shown to user and debug log
 - Hooks fire automatically; the user does not invoke them directly
 - Hooks defined in skill/agent frontmatter are scoped to that component's lifetime and cleaned up automatically when it finishes
+- Hooks receive the active effort level via `effort.level` in the JSON input and `$CLAUDE_EFFORT` environment variable
+- `CLAUDE_CODE_SESSION_ID` environment variable is exposed in the Bash tool subprocess, matching the `session_id` passed to hooks
 
 ## Advanced
 - Hook event categories: session lifecycle, per-turn prompts, tool execution, permissions, file/config changes, context compaction, worktrees, tasks, subagents, MCP elicitation, notifications
@@ -56,6 +58,8 @@
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
 - Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
+- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed
