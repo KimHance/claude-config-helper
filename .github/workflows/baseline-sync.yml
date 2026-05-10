@@ -235,7 +235,7 @@ jobs:
         id: create-branch
         if: steps.gate.outputs.has_changes == 'true'
         run: |
-          BRANCH="baseline-sync/run-${{ github.run_id }}-$(date -u +%Y-%m-%d)"
+          BRANCH="chore/baseline-sync-$(date -u +%Y-%m-%d)-${{ github.run_id }}"
           git config user.name "claude[bot]"
           git config user.email "claude[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
@@ -694,9 +694,10 @@ jobs:
           BENCH_E: ${{ steps.meta.outputs.bench_e_susp }}
           CHANGED_CATS: ${{ needs.sync-and-commit.outputs.changed_categories }}
         run: |
-          # 의미 기반 라벨만 사용. 기존 repo 라벨 (automated, routine-update, mass-update,
-          # high-impact, low-confidence) 만 부착. 새 라벨 만들 필요 없음.
-          LABELS='["automated"]'
+          # 의미 기반 라벨만 사용. 기존 repo 라벨 (automated, criteria-update,
+          # routine-update, mass-update, high-impact, low-confidence) 만 부착.
+          # criteria-update 는 auto-release.yml 의 원래 트리거와 호환을 위함.
+          LABELS='["automated", "criteria-update"]'
           # 의심 신호 우선 — low-confidence
           if [ "$VERDICT" != "pass" ] || [ "$BUMP_WARNING" = "true" ] || \
              [ "$BENCH_Q" = "true" ] || [ "$BENCH_E" = "true" ]; then
