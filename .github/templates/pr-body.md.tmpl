@@ -1,0 +1,36 @@
+## 참조한 Claude Code 릴리스
+{{RELEASES_BULLETS}}
+
+## 갱신된 카테고리
+| 카테고리 | 변경 파일 | 사유 |
+|---|---|---|
+{{CHANGED_TABLE_ROWS}}
+
+## 베이스라인 / 체크리스트 변경 요약
+{{PER_FILE_CHANGE_BULLETS}}
+
+## 자체 리뷰 결과 (변경된 카테고리만)
+| 카테고리 | 등급 | 이슈 |
+|---|---|---|
+{{REVIEW_TABLE_ROWS}}
+
+{{IF REVIEW_ISSUES_BLOCK}}{{REVIEW_ISSUES_BLOCK}}{{END}}
+
+품질 게이트: **{{GATE_LABEL}}** (verdict `{{VERDICT}}`)
+
+## 벤치마크 (참고용)
+{{IF BENCH_TABLE}}{{BENCH_TABLE}}{{END}}{{IF BENCH_SKIPPED}}이번 PR 에서는 변경된 benchmark 카테고리가 없어 skip.{{END}}
+
+> 참고용 표기. 머지 차단 기준 아님. 의심되면 reviewer 가 같이 달림.
+
+## 버전 결정
+`{{BUMP_LEVEL}}` bump `{{OLD_VERSION}}` → `{{NEW_VERSION}}`: {{BUMP_REASON}}
+
+{{IF WARNINGS}}{{WARNINGS}}{{END}}
+
+## Artifacts
+- [oracle-results-{{RUN_ID}}]({{ORACLE_URL}})
+- [review-results-{{RUN_ID}}]({{REVIEW_URL}})
+- [run]({{RUN_URL}})
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
