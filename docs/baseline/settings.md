@@ -59,7 +59,7 @@
 - Sandbox path prefixes: `/abs`, `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings)
 - Some keys live in `~/.claude.json` (the global config, not `settings.json`): `autoConnectIde`, `autoInstallIdeExtension`, `externalEditorContext`; this file also holds OAuth session, per-project allowed tools, MCP user/local server configs, caches
 - SSH config (`sshConfigs[]`) is read only from managed and user settings, never from project/local
-- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`
+- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN`
 
 ## Recommended
 - Use `.claude/settings.local.json` (gitignored) for personal overrides without polluting the team's project settings

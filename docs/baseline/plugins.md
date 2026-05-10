@@ -41,13 +41,8 @@
 - Managed-only plugin policies: `strictKnownMarketplaces` (allowlist of marketplace sources, enforced before download), `blockedMarketplaces` (blocklist, enforced before download), `allowedChannelPlugins` (allowlist of channel plugins that may push messages, requires `channelsEnabled: true`), `pluginTrustMessage` (custom trust-warning text)
 - Force-enabled plugins: managed settings can pin a plugin to enabled; users cannot override; force-enabled plugins' hooks are exempt from `allowManagedHooksOnly`
 - Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation
-- Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins
+- Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins; if the fetch or archive validation fails, Claude Code reports a plugin load error and starts without the plugin
 - Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing
-- After conversion, plugin version takes precedence when loaded
-- Default skill names from standalone (`/hello`) become namespaced (`/<plugin-name>:hello`) once converted
-- Plugin submission to official Anthropic marketplace: through `claude.ai/settings/plugins/submit` or `platform.claude.com/plugins/submit`
-- Plugins can prompt Claude Code users to install them via "plugin hints" (CLI integration)
-- Marketplaces can be hosted in private repositories for team-internal distribution
 
 ## Recommended
 - Start with standalone (`.claude/`) for quick iteration; convert to a plugin only when ready to share
