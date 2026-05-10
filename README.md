@@ -8,25 +8,29 @@
 
 A plugin that **reviews** and **generates** Claude Code configuration files — CLAUDE.md, memory, skills, agents, commands, hooks, MCP, and more.
 
+The review system is **self-improving**: a weekly GitHub Actions workflow (`baseline-sync`) keeps the rule files in `docs/baseline/*.md` in sync with the official Claude Code docs, and the same rules drive both the user-facing `/cchelp:review` and the workflow's own self-audit.
+
 ## Features
 
-### Review (`reviewer`)
+### Review (`/cchelp:review`)
 
-Evaluates 7 categories against best-practice checklists and assigns letter grades.
+Evaluates 7 categories against `docs/baseline/<category>.md` and assigns letter grades.
 
-| Category | What it checks |
-|----------|---------------|
-| CLAUDE.md | Structure, clarity, context efficiency, duplication |
-| Memory | Frontmatter, index structure, type consistency, date format |
-| Skills | SKILL.md structure, description quality (1,536-char cap), when_to_use, token efficiency |
-| Agents | Trigger examples, model selection, role clarity, advanced frontmatter (incl. --agent permissionMode) |
-| Commands | Naming, frontmatter, delegation patterns, built-in skill reuse |
-| Hooks | Event types (incl. mcp_tool), blocking events, duration_ms, PermissionRequest, asyncRewake, performance |
-| MCP | Server config, tool duplication, secret management |
+| Category | Rule source |
+|----------|-------------|
+| CLAUDE.md | `docs/baseline/claude-md.md` |
+| Memory | `docs/baseline/claude-md.md` (memory covered there) |
+| Skills | `docs/baseline/skills.md` |
+| Subagents | `docs/baseline/subagents.md` |
+| Commands | `docs/baseline/commands.md` |
+| Hooks | `docs/baseline/hooks.md` |
+| MCP | `docs/baseline/mcp.md` |
 
-**Output:** Terminal summary table + detailed report at `docs/claude-config-review-report.md`
+Plus cross-cutting baselines for `permissions`, `plugins`, `settings`.
 
-### Generate (`generator`)
+**Output:** Terminal summary table + detailed report at `docs/claude-config-review-report.md` (gitignored).
+
+### Generate (`/cchelp:generate`)
 
 Analyzes the project's tech stack and scaffolds Claude config files from templates.
 
@@ -35,15 +39,83 @@ Analyzes the project's tech stack and scaffolds Claude config files from templat
 - Skills / agents / commands scaffolding
 - Hooks, settings, MCP configuration
 
-### Generate + Review + Benchmark (`gn-rv`)
+### Generate + Review + Benchmark (`/cchelp:gn-rv`)
 
-End-to-end orchestration workflow (generate-and-review).
+End-to-end orchestration workflow:
 
 1. **Generate** — Scaffold config files via `generator`
 2. **Snapshot** — Copy originals for baseline comparison (if updating)
 3. **Review + Benchmark** — Audit via `reviewer` with parallel eval (with-skill vs baseline)
 4. **Iterate** — User-driven feedback loop until satisfied
 5. **Description Optimize** — Optional trigger accuracy tuning
+
+## How review works (in-memory pipeline)
+
+`/cchelp:review` runs a 5-step orchestration in the **main session** (not as a subagent — Claude Code disallows subagent-spawning-subagents).
+
+```
+┌─ Main session ─────────────────────────────────────────────┐
+│                                                            │
+│  Step 1: Discover                                          │
+│   ├─ Glob skills/**/SKILL.md                              │
+│   └─ Glob agents/*.md                                     │
+│                                                            │
+│  Step 2: Benchmark (MANDATORY when targets exist)         │
+│   ├─ For each target, dispatch in parallel:                │
+│   │   ├─ eval-runner (mode=with_skill) → returns JSON     │
+│   │   └─ eval-runner (mode=baseline)   → returns JSON     │
+│   └─ grader compares both → returns aggregate JSON         │
+│                                                            │
+│  Step 3: Audit                                             │
+│   └─ reviewer subagent reads docs/baseline/*.md +          │
+│      bench_data inline → writes review report             │
+│                                                            │
+│  Step 4: Pre-output verification                           │
+│   └─ Confirm bench_data populated (no N/A when targets)   │
+│                                                            │
+│  Step 5: Output                                            │
+│   └─ Read report, print summary table + Top 3 issues      │
+└────────────────────────────────────────────────────────────┘
+```
+
+**No filesystem writes** by eval-runner / grader — they return JSON inline in their response messages. This eliminates permission prompts in user-local environments.
+
+## Weekly auto-update (`baseline-sync` workflow)
+
+A scheduled GitHub Actions workflow keeps the rules in sync with the official Claude Code docs:
+
+```
+[cron / manual dispatch]
+        │
+        ▼
+JOB 1 sync-and-commit
+   • 9 doc-fetcher subagents check docs/baseline/*.md vs official docs
+   • Apply diffs, branch + commit + push
+        │
+        ▼
+JOB 2 project-review
+   • Self-audit (sanity checks: synonym swap, SDK leak, deletion rate)
+   • Decide bump level (patch/minor/major)
+   • Run benchmarks (skills/subagents categories)
+   • Bump plugin.json + marketplace.json
+        │
+        ▼
+JOB 3 create-pr
+   • Assemble Korean PR body with bench table
+   • Attach labels (automated, criteria-update, semantic labels)
+   • Attach reviewer if suspicion flags fire
+   • Open PR via REST
+        │
+        ▼
+[user merges PR]
+        │
+        ▼
+auto-release.yml
+   • Auto-tag v<version>
+   • Create GitHub Release
+```
+
+Same review code drives both `/cchelp:review` (user) and JOB 2 (workflow self-audit).
 
 ## Usage
 
@@ -58,9 +130,9 @@ Generate and review claude config
 ### Slash Commands
 
 ```
-/review    # Review config files
-/generate  # Generate config files
-/gn-rv     # Generate + review in one step
+/cchelp:review    # Review config files
+/cchelp:generate  # Generate config files
+/cchelp:gn-rv     # Generate + review in one step
 ```
 
 ## Installation
@@ -83,46 +155,74 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
+After install, restart Claude Code or run `/reload-plugins`. After upstream releases, run `/plugin marketplace update` to refresh the cache.
+
 ## Plugin Structure
 
 ```
 cchelp/
-├── .claude-plugin/          # Plugin & marketplace metadata
-├── agents/
-│   ├── reviewer.md          # Review agent (opus) — user-facing
-│   ├── generator.md         # Generator agent (sonnet) — user-facing
-│   ├── grader.md            # Eval grader (opus) — internal
-│   └── eval-runner.md       # Eval executor (sonnet) — internal
+├── .claude-plugin/             # Plugin & marketplace metadata
+│   ├── plugin.json
+│   └── marketplace.json
+├── agents/                     # 6 agents
+│   ├── reviewer.md             # Review (opus) — user-facing
+│   ├── generator.md            # Generate (sonnet) — user-facing
+│   ├── grader.md               # Eval grader (opus) — internal, in-memory
+│   ├── eval-runner.md          # Eval executor (sonnet) — internal, in-memory
+│   ├── plan-reviewer.md        # Cron pipeline U3.5 plan validator (opus)
+│   └── self-eval-runner.md     # Cron pipeline U5 thin executor (haiku)
 ├── skills/
-│   ├── review/              # Review checklists + benchmark eval (7 categories)
-│   ├── generate/            # Generation templates (8 types)
-│   └── gn-rv/               # Generate + Review + Benchmark orchestration
+│   ├── review/                 # Review skill (rules in docs/baseline/)
+│   ├── generate/               # Generation templates (8 types)
+│   └── gn-rv/                  # Generate + Review + Benchmark orchestration
 ├── commands/
-│   ├── review.md            # /review
-│   ├── generate.md          # /generate
-│   └── gn-rv.md             # /gn-rv
+│   ├── review.md               # /cchelp:review (in-memory orchestration)
+│   ├── generate.md             # /cchelp:generate
+│   └── gn-rv.md                # /cchelp:gn-rv
+├── docs/
+│   └── baseline/               # Single rule source (synced from official docs)
+│       ├── claude-md.md
+│       ├── skills.md
+│       ├── subagents.md
+│       ├── commands.md
+│       ├── hooks.md
+│       ├── mcp.md
+│       ├── permissions.md
+│       ├── plugins.md
+│       └── settings.md
+├── .github/workflows/
+│   ├── baseline-sync.yml       # Weekly rule sync (3 jobs: sync → review → PR)
+│   └── auto-release.yml        # Tag + Release on PR merge
 └── CLAUDE.md
 ```
 
-## Self-Review (v1.8.0)
+## Self-Review (v3.1.1, 2026-05-11)
 
-This plugin reviews itself. Latest results:
+The plugin reviews itself end-to-end with the in-memory pipeline (18 eval-runners + 9 graders + 1 reviewer, all parallel, no permission prompts).
 
-| Category | Grade | Issues | Benchmark |
-|----------|-------|--------|-----------|
-| CLAUDE.md | A- | 1 | - |
-| Memory | A- | 1 | - |
-| Skills | A | 0 | +57% pass rate, -35% tokens |
-| Subagents | A- | 3 | +83% pass rate, -35% tokens |
+| Category | Grade | Issues | Benchmark (avg) |
+|----------|-------|--------|-----------------|
+| CLAUDE.md | A | 0 | - |
+| Skills | A- | 1 | with-skill +15pp / gn-rv -5pp ⚠ |
+| Subagents | A- | 2 | with-skill +29pp pass-rate vs baseline |
 | Commands | A | 0 | - |
-| Hooks | N/A | - | - |
-| MCP | N/A | - | - |
+| Memory / Hooks / MCP | N/A | - | - |
 
-| Metric | With Skill | Baseline | Delta |
-|--------|-----------|----------|-------|
-| Pass rate | 96% | 26% | +70% |
-| Avg tokens | ~29,250 | ~45,000 | -35% |
-| Avg duration | ~73s | ~112s | -35% |
+**Bench detail (skills + subagents, 9 targets):**
+
+| Target | Quality (with / base) | Tokens (with / base) | Token cost |
+|---|---|---|---|
+| review | 0.90 / 0.75 | 28K / 21K | +32% |
+| generate | 0.85 / 0.70 | 20K / 19K | +4% |
+| gn-rv | 0.70 / 0.75 ⚠ | 38K / 19K | +100% |
+| reviewer | 0.92 / 0.45 | 36K / 20K | +79% |
+| generator | 0.90 / 0.60 | 30K / 19K | +59% |
+| grader | 0.87 / 0.86 | 27K / 20K | +35% |
+| eval-runner | 0.90 / 0.60 | 24K / 19K | +30% |
+| plan-reviewer | 0.92 / 0.78 | 26K / 19K | +38% |
+| self-eval-runner | 1.00 / 0.30 | 28K / 18K | +51% |
+
+> Quality wins are systemic (+15–70pp), but every skill costs more tokens than baseline. The trade-off is intentional — skills inject structured rules that produce better, more consistent output at higher per-call cost. `gn-rv` is the one outlier: quality regressed below baseline; trim and re-eval.
 
 **Overall: A-**
 
