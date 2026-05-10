@@ -27,6 +27,7 @@ jobs:
     outputs:
       branch: ${{ steps.create-branch.outputs.branch }}
       has_changes: ${{ steps.gate.outputs.has_changes }}
+      changed_categories: ${{ steps.gate.outputs.changed_categories }}
       run_id: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
@@ -183,8 +184,13 @@ jobs:
       - name: gate (no change?)
         id: gate
         run: |
-          if [ -z "$(ls -A /tmp/baseline-diff/)" ] || \
-             [ "$(cat /tmp/baseline-diff/*.diff 2>/dev/null | wc -c)" = "0" ]; then
+          # Count categories with at least one non-empty diff
+          CHANGED=0
+          for d in /tmp/baseline-diff/*.diff; do
+            [ -s "$d" ] && CHANGED=$((CHANGED + 1))
+          done
+          echo "changed_categories=$CHANGED" >> $GITHUB_OUTPUT
+          if [ "$CHANGED" -eq 0 ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "::notice ::no baseline drift — JOB2/3 will skip"
           else
@@ -563,13 +569,35 @@ jobs:
 
       - name: pick labels
         id: labels
+        env:
+          VERDICT: ${{ steps.meta.outputs.verdict }}
+          BUMP_LEVEL: ${{ steps.meta.outputs.bump_level }}
+          BUMP_WARNING: ${{ steps.meta.outputs.bump_warning }}
+          BENCH_Q: ${{ steps.meta.outputs.bench_q_susp }}
+          BENCH_E: ${{ steps.meta.outputs.bench_e_susp }}
+          CHANGED_CATS: ${{ needs.sync-and-commit.outputs.changed_categories }}
         run: |
-          LABELS='["baseline-sync", "verdict-${{ steps.meta.outputs.verdict }}", "bump-${{ steps.meta.outputs.bump_level }}"]'
-          if [ "${{ steps.meta.outputs.bump_warning }}" = "true" ]; then
-            LABELS=$(jq -c '. + ["bump-suspect"]' <<< "$LABELS")
+          # 의미 기반 라벨만 사용. 기존 repo 라벨 (automated, routine-update, mass-update,
+          # high-impact, low-confidence) 만 부착. 새 라벨 만들 필요 없음.
+          LABELS='["automated"]'
+          # 의심 신호 우선 — low-confidence
+          if [ "$VERDICT" != "pass" ] || [ "$BUMP_WARNING" = "true" ] || \
+             [ "$BENCH_Q" = "true" ] || [ "$BENCH_E" = "true" ]; then
+            LABELS=$(jq -c '. + ["low-confidence"]' <<< "$LABELS")
           fi
-          if [ "${{ steps.meta.outputs.bench_q_susp }}" = "true" ] || [ "${{ steps.meta.outputs.bench_e_susp }}" = "true" ]; then
-            LABELS=$(jq -c '. + ["bench-suspect"]' <<< "$LABELS")
+          # 영향도
+          if [ "$BUMP_LEVEL" = "major" ]; then
+            LABELS=$(jq -c '. + ["high-impact"]' <<< "$LABELS")
+          fi
+          # 변경 규모
+          if [ "${CHANGED_CATS:-0}" -ge 5 ]; then
+            LABELS=$(jq -c '. + ["mass-update"]' <<< "$LABELS")
+          fi
+          # 안전한 일상 업데이트
+          if [ "$VERDICT" = "pass" ] && [ "$BUMP_LEVEL" = "patch" ] && \
+             [ "$BUMP_WARNING" != "true" ] && \
+             [ "$BENCH_Q" != "true" ] && [ "$BENCH_E" != "true" ]; then
+            LABELS=$(jq -c '. + ["routine-update"]' <<< "$LABELS")
           fi
           echo "labels=$LABELS" >> $GITHUB_OUTPUT
           echo "labels: $LABELS"
@@ -613,23 +641,27 @@ jobs:
       - name: apply labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LABELS_JSON: ${{ steps.labels.outputs.labels }}
         run: |
+          PAYLOAD=$(jq -nc --argjson labels "$LABELS_JSON" '{labels: $labels}')
           curl -sS -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.create_pr.outputs.pr_number }}/labels \
-            -d "{\"labels\": ${{ steps.labels.outputs.labels }}}" || true
+            -d "$PAYLOAD" || true
 
       - name: request reviewers (only if suspicion)
         if: steps.reviewers.outputs.reviewers != '[]'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWERS_JSON: ${{ steps.reviewers.outputs.reviewers }}
         run: |
+          PAYLOAD=$(jq -nc --argjson reviewers "$REVIEWERS_JSON" '{reviewers: $reviewers}')
           curl -sS -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.create_pr.outputs.pr_number }}/requested_reviewers \
-            -d "{\"reviewers\": ${{ steps.reviewers.outputs.reviewers }}}"
+            -d "$PAYLOAD"
 
       - name: upload artifact (always)
         if: always()
