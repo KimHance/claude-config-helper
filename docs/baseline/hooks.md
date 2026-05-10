@@ -22,7 +22,7 @@
 - `SessionStart` matchers: `startup`, `resume`, `clear`, `compact`
 - `Setup` matchers: `init`, `maintenance`; fires only with `--init-only`, `--init` in `-p`, or `--maintenance` in `-p`
 - `SessionEnd` matchers: `clear`, `resume`, `logout`, `prompt_input_exit`, `bypass_permissions_disabled`, `other`
-- Per-turn events: `UserPromptSubmit` (no matcher), `UserPromptExpansion` (matcher: command name), `Stop` (no matcher), `StopFailure` (matcher: error type)
+- Per-turn events: `UserPromptSubmit` (no matcher), `UserPromptExpansion` (matcher: command name), `Stop` (no matcher), `StopFailure` (no matcher); StopFailure matchers are error type (`rate_limit`, `authentication_failed`, `billing_error`, `invalid_request`, `server_error`, `max_output_tokens`, `unknown`)
 - Tool events: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PostToolBatch`, `PermissionRequest`, `PermissionDenied`
 - Tool-event matchers are tool names (`Bash`, `Edit`, `Write`, `Read`, `Glob`, `Grep`, `Agent`, `WebFetch`, `WebSearch`, `AskUserQuestion`, `ExitPlanMode`, MCP tools `mcp__<server>__<tool>`)
 - Subagent events: `SubagentStart`, `SubagentStop` (matcher = agent type)
@@ -32,7 +32,7 @@
 - Task events: `TaskCreated`, `TaskCompleted` (no matcher)
 - MCP elicitation events: `Elicitation`, `ElicitationResult` (matcher = MCP server name)
 - Other events: `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
-- Hook handler types: `command` (shell), `http` (POST to URL), `mcp_tool` (call connected MCP server), `prompt` (single-turn Claude eval), `agent` (subagent verification, experimental)
+- Hook handler types: `command` (shell), `http` (POST to URL), `mcp_tool` (call connected MCP server), `prompt` (single-turn Claude eval), `agent` (subagent verification)
 - `command` hooks support `shell: bash` (default) or `shell: powershell`
 - `http` hooks send JSON via POST; non-2xx, timeout, or connection failure is a non-blocking error
 - `http` hook headers can interpolate `$VAR` only if the var name is listed in `allowedEnvVars`
@@ -41,7 +41,7 @@
 - Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
 - `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
-- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
+- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`; effort level available via `effort.level` JSON input field
 - Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
@@ -56,6 +56,7 @@
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
 - Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- `$CLAUDE_EFFORT` environment variable exposes the current effort level to hooks
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed

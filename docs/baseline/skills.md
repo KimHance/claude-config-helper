@@ -51,6 +51,8 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- In regular sessions, skill descriptions are always in context but full skill content only loads when invoked
+- In subagents with preloaded skills, full skill content is injected at startup
 
 ## Recommended
 - description should put key use case first to fit within character budget
@@ -68,6 +70,8 @@
 - Dynamic context injection with !`command` to ground skill in live data
 - Skills with disable-model-invocation: true work best for deterministic workflows
 - Organized skills should preserve foundational knowledge while enabling flexibility
+- For permission rules, use syntax like Skill(name) for exact match or Skill(name *) for prefix match with arguments
+- Pre-approve tools carefully: allowed-tools grants permission without per-use approval, so review project skills before trusting them
 
 ## Anti-patterns
 - Do not put commands/, agents/, skills/, hooks/ inside .claude-plugin/ directory
@@ -76,3 +80,5 @@
 - Forked subagent context has no conversation history; write actionable tasks
 - context: fork only makes sense for skills with explicit instructions, not guidelines
 - context: fork skills without actionable task prompt return without meaningful output
+- Do not use skillOverrides for plugin skills; manage plugin skills through /plugin instead
+- Avoid setting high-priority skills to "name-only" visibility as it removes keywords Claude needs for auto-invocation matching

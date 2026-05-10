@@ -17,7 +17,7 @@
 - A subagent's `description` field combined with the user request decides automatic delegation; clear specific descriptions improve routing
 
 ## Advanced
-- Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`
+Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`
 - `tools` is allowlist; `disallowedTools` is denylist; if both set, denylist applied first then allowlist resolved against the remainder
 - `model` accepts `sonnet`/`opus`/`haiku`/full model id (e.g. `claude-opus-4-7`)/`inherit`; defaults to `inherit`
 - `permissionMode` values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`
