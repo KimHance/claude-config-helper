@@ -55,10 +55,10 @@
 - `/keybindings` — open or create keybindings configuration
 - `/login` / `/logout` — Anthropic account auth
 - `/loop [interval] [prompt]` (alias `/proactive`) — bundled Skill; run a prompt repeatedly; without interval Claude self-paces; without prompt runs autonomous maintenance or `.claude/loop.md`
-- `/mcp` — manage MCP server connections and OAuth
+- `/mcp` — manage MCP server connections and OAuth; shows tool count for connected servers
 - `/memory` — edit CLAUDE.md, toggle auto-memory, view auto-memory entries
 - `/mobile` (aliases `/ios`, `/android`) — show QR for mobile app
-- `/model [model]` — select model; supports left/right arrow effort adjustment
+- `/model [model]` — select model; supports left/right arrow effort adjustment; lists models from gateway's `/v1/models` endpoint when `ANTHROPIC_BASE_URL` points to Anthropic-compatible gateway
 - `/passes` — share free-week pass with friends (eligibility-based)
 - `/permissions` (alias `/allowed-tools`) — manage allow/ask/deny rules; review auto mode denials
 - `/plan [description]` — enter plan mode (optionally with task description)
@@ -66,13 +66,14 @@
 - `/powerup` — discover features through interactive lessons
 - `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly to view PR comments instead
 - `/privacy-settings` — view/update privacy settings (Pro/Max only)
+- `/radio` — open Claude FM lo-fi radio in browser; prints stream URL when no browser available (not available on Bedrock, Vertex, or Foundry)
 - `/recap` — one-line summary of current session
 - `/release-notes` — interactive changelog viewer
 - `/reload-plugins` — reload all active plugins without restart
 - `/remote-control` (alias `/rc`) — make session controllable from claude.ai
 - `/remote-env` — configure default remote env for `--remote` web sessions
 - `/rename [name]` — rename session; auto-generates name if no arg
-- `/resume [session]` (alias `/continue`) — resume conversation by ID/name
+- `/resume [session]` (alias `/continue`) — resume conversation by ID/name; offers to summarize stale, large sessions before re-reading
 - `/review [PR]` — review a PR locally; `/ultrareview` is the cloud variant
 - `/rewind` (aliases `/checkpoint`, `/undo`) — rewind conversation/code or summarize from a selected message
 - `/sandbox` — toggle sandbox mode (supported platforms only)

@@ -49,6 +49,7 @@
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
 - Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
+- `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - Hook stdout context injection capped at 10,000 characters per call
 - Settings priority for hooks: managed policy > local (`settings.local.json`) > project (`settings.json`) > user (`~/.claude/settings.json`); plugin hooks merge in alongside
 - `allowManagedHooksOnly` policy blocks user/project/plugin hooks (force-enabled plugins exempt)
