@@ -1,0 +1,7 @@
+{
+  "run_id": "25514207873",
+  "date": "2026-05-10",
+  "artifact_name_historical": "oracle-results-25514207873",
+  "categories_changed": ["mcp", "permissions", "plugins", "settings", "skills", "subagents"],
+  "categories_unchanged": ["claude-md", "commands", "hooks"]
+}

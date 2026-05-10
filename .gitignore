@@ -9,6 +9,13 @@ cron/.pytest_cache
 **/__pycache__
 **/.pytest_cache
 
+# test fixtures — artifact content ignored, only .meta.json tracked
+cron/test-fixtures/baseline-sync/run-*/oracle-results-*/
+cron/test-fixtures/baseline-sync/run-*/baseline-sync-results-*/
+cron/test-fixtures/baseline-sync/run-*/home/
+cron/test-fixtures/baseline-sync/run-*/tmp/
+cron/test-fixtures/baseline-sync/run-*/*.zip
+
 **/*.egg-info
 
 /docs/superpowers
