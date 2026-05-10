@@ -494,11 +494,17 @@ jobs:
           repo = os.environ["GITHUB_REPOSITORY"]
           review_dir = Path(os.environ["REVIEW"])
 
+          # JOB3 가 sync 브랜치를 checkout 하므로 plugin.json 은 이미 bump 됨.
+          # 진짜 OLD_VERSION 은 main 의 plugin.json (= 이 PR 머지 전 상태) 에서 읽는다.
+          import subprocess
           try:
-              cur = json.loads(Path(".claude-plugin/plugin.json").read_text()).get("version", "0.0.0")
+              old_v = subprocess.check_output(
+                  ["git", "show", "origin/main:.claude-plugin/plugin.json"],
+                  text=True,
+              )
+              old_v = json.loads(old_v).get("version", "0.0.0")
           except Exception:
-              cur = "0.0.0"
-          old_v = cur
+              old_v = "0.0.0"
 
           rows = []
           per_file = []
