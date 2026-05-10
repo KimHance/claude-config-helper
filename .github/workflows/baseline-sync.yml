@@ -56,98 +56,132 @@ jobs:
             --permission-mode bypassPermissions
             --allowed-tools Bash,Read,Write,Task,WebFetch,WebSearch
           prompt: |
-            너는 baseline-sync 메인 세션이다. 목표는 9개 카테고리 룰 파일을 공식 docs
-            기준으로 검토하고, 각 카테고리에 대해 JSON 리포트를 작성하는 것.
+            You are the baseline-sync coordinator. Goal: review 9 category rule
+            files against the official Claude Code docs, and write one JSON
+            report per category. You only orchestrate — the assistants do the
+            review.
 
-            카테고리 목록과 각 룰 파일 경로:
-            - skills           → docs/baseline/skills.md
-            - subagents        → docs/baseline/subagents.md
-            - hooks            → docs/baseline/hooks.md
-            - mcp              → docs/baseline/mcp.md
-            - claude-md        → docs/baseline/claude-md.md
-            - commands         → docs/baseline/commands.md
-            - settings         → docs/baseline/settings.md
-            - permissions      → docs/baseline/permissions.md
-            - plugins          → docs/baseline/plugins.md
+            Categories and rule file paths:
+            - skills        -> docs/baseline/skills.md
+            - subagents     -> docs/baseline/subagents.md
+            - hooks         -> docs/baseline/hooks.md
+            - mcp           -> docs/baseline/mcp.md
+            - claude-md     -> docs/baseline/claude-md.md
+            - commands      -> docs/baseline/commands.md
+            - settings      -> docs/baseline/settings.md
+            - permissions   -> docs/baseline/permissions.md
+            - plugins       -> docs/baseline/plugins.md
 
-            절차 (반드시 이 순서):
-            1) `mkdir -p /tmp/baseline-sync-reports` 를 Bash 로 실행.
-            2) 9개 카테고리 각각에 대해 **동시에** Task tool 을 호출해 도우미를
-               spawn. subagent_type 은 모두 "claude-code-guide".
-               각 도우미한테 전달할 prompt 는 아래 템플릿을 카테고리별로
-               치환한 것:
+            Steps (in order):
+            1) Run `mkdir -p /tmp/baseline-sync-reports` via Bash.
+            2) In a SINGLE message, dispatch 9 Task calls in parallel.
+               subagent_type = "claude-code-guide" for all 9. Each assistant
+               receives the template below with <CATEGORY> and <RULE_FILE>
+               substituted:
 
                ---
-               너는 cchelp review 베이스라인의 <CATEGORY> 카테고리를
-               담당하는 검수 도우미다. 다음 절차를 따라라:
+               You are reviewing the <CATEGORY> category of the cchelp review
+               baseline against the official Claude Code docs. Follow this
+               procedure exactly. Do not improvise; do not skip steps.
 
-               1. <RULE_FILE> 를 Read.
-               2. <CATEGORY> 와 관련된 공식 Claude Code docs 페이지들을
-                  WebFetch 해서 직접 읽어라
-                  (`https://code.claude.com/docs/en/...`).
+               STEP 1 — READ the existing baseline.
+                 Read <RULE_FILE>. Note every concrete fact present (option
+                 names, flag syntax, env vars, behavior rules). Treat the
+                 baseline as the SOURCE OF TRUTH for what facts are already
+                 covered.
 
-                  **풍부하게 탐색할 것 (중요):**
-                  - 메인 페이지 한 곳만 보지 말 것. 같은 카테고리 내용이
-                    여러 페이지에 흩어져 있을 수 있다.
-                  - `https://code.claude.com/docs/en/llms.txt` 의 페이지
-                    목록을 먼저 훑어 관련 페이지를 폭넓게 식별하라.
-                  - 인접 주제 페이지에 그 카테고리에 대한 보충 / 차이점 /
-                    제약이 적혀있을 수 있다 (예: skills 검토 시
-                    sub-agents 의 "preload skills", permissions 의
-                    `Skill(name)` 룰, hooks 의 "hooks in skills and agents",
-                    plugins 의 plugin skill 네임스페이스, commands 의
-                    bundled-skill 분류 등).
-                  - changelog 페이지에서 그 카테고리 관련 추가 / 제거 /
-                    deprecated 항목을 확인하라.
-                  - 적어도 3 ~ 5 개 페이지를 fetch 해야 정상. 1개만 fetch
-                    하면 누락된 사실이 생긴다.
+               STEP 2 — FETCH a fixed page set. Do NOT freelance.
+                 Fetch EXACTLY these pages, no more, no fewer:
+                   (a) The main reference page for <CATEGORY>:
+                       https://code.claude.com/docs/en/<CATEGORY>
+                       (For mcp: https://code.claude.com/docs/en/mcp
+                        For claude-md: https://code.claude.com/docs/en/memory)
+                   (b) The Claude Code changelog page:
+                       https://code.claude.com/docs/en/changelog
+                   (c) ONE adjacent page IF the baseline explicitly references
+                       it (e.g., skills baseline references "permissions" =>
+                       fetch permissions page). If none referenced, skip.
 
-                  **읽지 말아야 할 페이지 (중요):**
-                  - **Agent SDK 관련 모든 페이지는 절대 fetch 하지 말 것.**
-                    경로 `agent-sdk/` 가 들어간 페이지, 또는 SDK ·
-                    programmatic API 만 다루는 페이지는 이 베이스라인의
-                    검토 범위 밖이다.
-                  - SDK 전용 사실 (예: SDK 의 `tools: ["Skill"]` 옵션,
-                    SDK `--system-prompt` 매개변수, SDK 가 skills 를
-                    로드하는 방식 등) 은 baseline 에 포함하지 않는다.
-                  - 인접 페이지에 SDK 섹션이 섞여 있다면 그 섹션은
-                    무시하고 Claude Code (CLI) 관점의 사실만 추출.
+                 Cap: 2 or 3 pages total. More fetches do NOT improve quality;
+                 they introduce noise.
 
-               3. 룰 파일의 4개 섹션 (Fundamentals / Advanced /
-                  Recommended / Anti-patterns) 각각에 대해 의미가 공식
-                  docs 와 일치하는지 판정하라.
-                  - 의미가 같으면 changed: false. 어휘·표현·문장구조 차이는
-                    무시. 동의어 swap 절대 금지.
-                  - 공식 docs 가 실제로 의미가 다르거나 / deprecated 됐거나 /
-                    신규 내용이 있어 보강 필요한 경우만 changed: true 로
-                    표시하고 새 본문(new_body)을 작성.
-                  - 확신 없으면 changed: false. 추측·창작 금지.
-               4. 결과를 /tmp/baseline-sync-reports/<CATEGORY>.json 에 다음 schema 로
-                  Write:
-                  {
-                    "category": "<CATEGORY>",
-                    "rule_file": "<RULE_FILE>",
-                    "sections": {
-                      "Fundamentals": { "changed": true|false,
-                                        "new_body": "...섹션 본문...",
-                                        "reason": "...왜 바꿨는지...",
-                                        "sources": ["url1", "url2"] },
-                      "Advanced": { ... },
-                      "Recommended": { ... },
-                      "Anti-patterns": { ... }
-                    }
-                  }
-                  changed: false 인 섹션은 new_body / reason / sources 생략 가능.
-               5. final message 한 줄로 "DONE: /tmp/baseline-sync-reports/<CATEGORY>.json"
-                  이라고만 답해라.
+                 NEVER fetch:
+                   - Any page under `agent-sdk/`
+                   - Pages about SDK / programmatic API only
+                 If an adjacent page contains an SDK section, ignore that
+                 section. Only extract Claude Code (CLI) facts.
 
-               중요: new_body 에는 헤딩(## ...)을 포함하지 말 것 — 본문만.
+               STEP 3 — DECISION TREE per section.
+                 For each of the 4 sections (Fundamentals, Advanced,
+                 Recommended, Anti-patterns), apply this tree IN ORDER and
+                 stop at the first matching branch:
+
+                 Q1: Is every fact in the baseline section still confirmed by
+                     the docs?
+                     YES + no NEW facts in changelog for this section
+                          -> changed: false. STOP.
+                     YES + changelog adds a NEW stable fact directly relevant
+                          to this section
+                          -> changed: true. Write new_body that keeps all
+                             existing facts unchanged AND appends the new
+                             fact only.
+                     NO  -> A baseline fact is missing/contradicted in docs.
+                            -> changed: true. Write new_body with the
+                               outdated fact removed/corrected. Do NOT add
+                               unrelated new facts in the same change.
+
+                 Hard rules:
+                   - Synonym swap, sentence-restructure, bullet->prose
+                     reformat are FORBIDDEN. They count as changed: false.
+                   - "Beta", "experimental", "preview" features in docs that
+                     are NOT in the changelog as stable -> do NOT add. Treat
+                     as changed: false.
+                   - When uncertain, choose changed: false. Speculation is
+                     forbidden.
+
+               STEP 4 — REASON FORMAT (when changed: true only).
+                 reason MUST follow this shape:
+                   "<changelog version or 'doc page'>: <one-line concrete
+                    fact>. Source: <single URL>"
+                 Examples:
+                   "v2.1.136: settings.autoMode.hard_deny added for
+                    unconditional deny rules. Source:
+                    https://code.claude.com/docs/en/settings"
+                   "doc page: claude mcp reset-project-choices CLI added.
+                    Source: https://code.claude.com/docs/en/mcp"
+                 If you must report multiple facts in one section, use one
+                 bullet per fact, each with its own URL. Do not write
+                 paragraphs.
+
+               STEP 5 — WRITE the report to
+                       /tmp/baseline-sync-reports/<CATEGORY>.json
+                 Schema:
+                   {
+                     "category": "<CATEGORY>",
+                     "rule_file": "<RULE_FILE>",
+                     "sections": {
+                       "Fundamentals": { "changed": true|false,
+                                         "new_body": "...section body...",
+                                         "reason": "...",
+                                         "sources": ["url1", ...] },
+                       "Advanced":     { ... },
+                       "Recommended":  { ... },
+                       "Anti-patterns":{ ... }
+                     }
+                   }
+                 - Sections with changed: false MAY omit new_body / reason /
+                   sources entirely.
+                 - new_body MUST NOT include the heading ("## ..."). Body
+                   only. Preserve original formatting style (if baseline used
+                   bullets, keep bullets; if prose, keep prose).
+                 - Last message must be exactly:
+                       DONE: /tmp/baseline-sync-reports/<CATEGORY>.json
                ---
 
-            3) 9개 도우미 모두 응답이 돌아오면 `ls /tmp/baseline-sync-reports/` 로
-               9개 파일이 모두 만들어졌는지 확인. 누락된 카테고리는 그
-               카테고리만 다시 Task 로 spawn.
-            4) 모두 확인되면 `done: 9 reports` 라고만 출력.
+            3) After all 9 assistants reply, run
+               `ls /tmp/baseline-sync-reports/` to confirm 9 files exist.
+               If any missing, re-spawn ONLY that category.
+            4) When all 9 confirmed, output exactly: `done: 9 reports`
 
       - name: Show report summaries (debug)
         if: always()
@@ -298,38 +332,82 @@ jobs:
             --permission-mode bypassPermissions
             --allowed-tools Bash,Read,Write
           prompt: |
-            너는 baseline-sync JOB 2 의 self-review 도우미다.
+            You are the baseline-sync JOB 2 self-review assistant.
 
-            입력: /tmp/review-input.md (변경된 카테고리만 묶여 있음)
+            Input: /tmp/review-input.md (only categories that JOB 1 actually
+            changed are bundled there).
 
-            절차:
-            1) /tmp/review-input.md 를 Read.
-            2) 각 카테고리의 diff + reasons 를 보고 다음 4개 항목으로 sanity 감사:
-               - 동의어 swap 만 한 변경인지 (의미 같으면 의심)
-               - SDK 사실이 끼어든 흔적이 있는지
-               - 한 섹션 삭제율이 > 50% 인 게 있는지
-               - 모든 reason 이 source URL 을 가졌는지
-            3) verdict 결정 (pass / warn / block).
-               - 1~3 모두 정상이고 4 도 만족 → pass
-               - 의심 신호 1개 이상 → warn
-               - baseline 본문이 통째로 비어있거나 명백히 망가짐 → block
-            4) bump 결정. 다음 rubric:
-               - patch: 표현/예시/오타. 의미 동일.
-               - minor: 신규 사실 추가. 기존 가이드 무력화 없음.
-               - major: 기존 가이드와 충돌, deprecated, 의미 변경.
-            5) 다음 두 파일을 Write:
-               (a) /tmp/review-summary.md — 표 + 카테고리별 한 줄 평 + verdict
-                   markdown 형식. 다음 두 줄을 마지막에 박아라:
-                   `verdict: <pass|warn|block>`
-                   `bump_level_hint: <patch|minor|major>`   (참고용)
-               (b) /tmp/bump.json — 다음 schema 정확히:
-                   {
-                     "level": "patch|minor|major",
-                     "reason": "...한 줄 사유...",
-                     "evidence_files": ["docs/baseline/<cat>.md", ...]
-                   }
-                   evidence_files 에는 실제로 변경된 baseline 파일 경로만 기재.
-            6) 마지막 한 줄로 "DONE" 출력.
+            Procedure:
+
+            STEP 1 — Read /tmp/review-input.md.
+
+            STEP 2 — Sanity audit per changed category. Apply these 4 checks:
+              C1 Synonym/format swap only? — diff replaces words with synonyms,
+                 reorders sentences, or converts bullets <-> prose without
+                 adding/removing facts. SUSPICIOUS if yes.
+              C2 SDK fact intrusion? — added text mentions SDK options
+                 (e.g., `tools: ["Skill"]`, `--system-prompt`, programmatic
+                 API), or facts that only apply to the Agent SDK rather than
+                 Claude Code CLI. SUSPICIOUS if yes.
+              C3 Section deletion >50%? — a single section's body shrinks by
+                 more than half by line count, AND the removed lines were
+                 substantive (not just a single bullet trim). SUSPICIOUS if
+                 yes.
+              C4 reason-evidence mismatch? — the JSON `reason` text does not
+                 match what the diff actually shows (e.g., reason says "added
+                 X" but X is not in the diff). SUSPICIOUS if yes.
+              C5 Source URL present? — every changed section has at least one
+                 entry in `sources`. MISSING URL is SUSPICIOUS.
+
+            STEP 3 — Decide verdict (exactly one):
+              - pass  : zero suspicious checks across all categories.
+              - warn  : 1+ suspicious checks but baseline is structurally OK.
+              - block : a baseline section body is empty / corrupted /
+                        replaced with garbage. (rare)
+
+            STEP 4 — Decide bump level (exactly one):
+              - patch : only formatting / typo / example tweaks. No new facts.
+              - minor : at least one new fact added; no existing fact removed
+                        or contradicted.
+              - major : at least one existing fact removed/contradicted, or
+                        a deprecation/behavior change.
+
+            STEP 5 — Write two files:
+
+              (a) /tmp/review-summary.md — markdown report. Required structure:
+
+                  ## Checks Matrix
+                  | Check | <cat1> | <cat2> | ... |
+                  |---|---|---|---|
+                  | C1 Synonym/format swap | OK / SUSPICIOUS: <why> | ... |
+                  | C2 SDK intrusion | OK / SUSPICIOUS: <why> | ... |
+                  | C3 Section deletion >50% | OK / SUSPICIOUS: <why> | ... |
+                  | C4 reason-evidence mismatch | OK / SUSPICIOUS: <why> | ... |
+                  | C5 source URL present | OK / SUSPICIOUS: <why> | ... |
+
+                  ## Per-category notes
+                  - **<cat>**: one sentence summary of what the diff actually
+                    changes (factual, no value judgment).
+
+                  ## Suspicion Summary
+                  Numbered list of every SUSPICIOUS finding. If none, write
+                  "No suspicions." instead of the list.
+
+                  Last two lines (machine-parsed; format exactly):
+                  verdict: <pass|warn|block>
+                  bump_level_hint: <patch|minor|major>
+
+              (b) /tmp/bump.json — schema exactly:
+                  {
+                    "level": "patch|minor|major",
+                    "reason": "<one short sentence summarizing what new
+                               facts/changes drove this level>",
+                    "evidence_files": ["docs/baseline/<cat>.md", ...]
+                  }
+                  Only list baseline files that actually appear changed in the
+                  diff.
+
+            STEP 6 — Output exactly: DONE
 
       - name: validate-bump
         id: validate
