@@ -18,7 +18,7 @@
 
 ## Advanced
 - Permission modes (`permissions.defaultMode`): `default` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
-- `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt
+- `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt; as of v2.1.126, **also includes protected shell config files** (`.bashrc`, `.bash_profile`, `.zshrc`, `.zprofile`, `.profile`), `.gitconfig`, `.gitmodules`, `.ripgreprc`, `.mcp.json`, `.claude.json`
 - `permissions.disableBypassPermissionsMode: "disable"` blocks bypass mode and `--dangerously-skip-permissions` flag
 - `permissions.disableAutoMode: "disable"` blocks auto mode activation
 - `Bash(*)` ≡ `Bash` (matches all bash); wildcard `*` allowed at any position
@@ -28,7 +28,7 @@
 - Approving a compound command via "Yes don't ask again" saves up to 5 separate rules, one per subcommand
 - Bash process wrappers stripped before matching: `timeout`, `time`, `nice`, `nohup`, `stdbuf`; bare `xargs` (no flags) also stripped
 - Environment runners NOT stripped: `direnv exec`, `devbox run`, `mise exec`, `npx`, `docker exec` — write specific rules like `Bash(devbox run npm test)`
-- Exec wrappers always prompt (never auto-approved by prefix): `watch`, `setsid`, `ionice`, `flock`; same for `find -exec`/`-delete`
+- Exec wrappers always prompt (never auto-approved by prefix): `watch`, `setsid`, `ionice`, `flock`; same for `find -exec`/`-delete`; also `env`, `sudo` **always prompt even when prefixing a read-only command**
 - Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `head`, `tail`, `grep`, `find`, `wc`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
 - Unquoted globs allowed for fully-read-only commands (`ls *.ts`); commands with write/exec flags (`find`, `sort`, `sed`, `git`) still prompt with unquoted glob
 - `cd` into cwd / `additionalDirectories` is read-only; compound `cd packages/api && ls` runs without prompt; `cd` + `git` always prompts

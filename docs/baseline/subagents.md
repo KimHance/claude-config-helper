@@ -30,6 +30,7 @@
 - `isolation: worktree` runs the subagent in a temporary git worktree; the worktree is auto-cleaned if the subagent makes no changes
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
+- `effort` accepts effort levels (`low`, `medium`, `high`, `xhigh`, `max`) that override the session effort level
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
 - Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
@@ -49,6 +50,7 @@
 - `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; Ctrl+B backgrounds a running task
 - Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks
 - Resume an existing subagent via `SendMessage` tool with the agent ID; requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
+- Subagent invocations can include `isolation: "worktree"` for fork-based subagents to write edits to a separate git worktree
 
 ## Recommended
 - Design each subagent to excel at one specific task; write detailed `description` so Claude knows when to delegate

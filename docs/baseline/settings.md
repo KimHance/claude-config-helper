@@ -17,8 +17,8 @@
 - Schema may lag the latest CLI; warnings on recent fields don't invalidate the config
 
 ## Advanced
-- Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
-- Permissions keys: `permissions` (object), `allowManagedPermissionRulesOnly` (managed), `disableBypassPermissionsMode`
+Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
+- Permissions keys: `permissions` (object), `allowManagedPermissionRulesOnly` (managed), `disableBypassPermissionsMode`, `disableAutoMode`
 - File/directory access keys: `additionalDirectories`, `claudeMdExcludes`, `respectGitignore`, `fileSuggestion`
 - Memory keys: `autoMemoryEnabled`, `autoMemoryDirectory` (latter only honored from managed/user/`--settings`, never from project/local)
 - Login/org keys (typically managed): `forceLoginMethod` (`claudeai`/`console`), `forceLoginOrgUUID` (string or array; empty array fails closed)
@@ -33,11 +33,11 @@
 - Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
 - Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
-- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
+- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
-- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, plus a `.worktreeinclude` file for copying gitignored files into worktrees
+- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, `worktree.baseRef` (`fresh`/`head`), plus a `.worktreeinclude` file for copying gitignored files into worktrees
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
 - Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
 - Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
@@ -55,7 +55,7 @@
 - Within the managed tier, precedence is server > MDM/OS > file-based
 - `forceRemoteSettingsRefresh` (managed) blocks CLI startup until remote settings fetched (fail-closed)
 - Sandbox object (macOS/Linux/WSL2): `enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed`, `excludedCommands`, `allowUnsandboxedCommands`, plus `filesystem.{allowWrite, denyWrite, denyRead, allowRead, allowManagedReadPathsOnly}`, `network.{allowedDomains, deniedDomains, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowManagedDomainsOnly, httpProxyPort, socksProxyPort}`, `enableWeakerNestedSandbox`, `enableWeakerNetworkIsolation`
-- Sandbox path prefixes: `/abs`, `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings)
+- Sandbox path prefixes: `/abs` (absolute), `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings), `//path` (absolute, deprecated)
 - Some keys live in `~/.claude.json` (the global config, not `settings.json`): `autoConnectIde`, `autoInstallIdeExtension`, `externalEditorContext`; this file also holds OAuth session, per-project allowed tools, MCP user/local server configs, caches
 - SSH config (`sshConfigs[]`) is read only from managed and user settings, never from project/local
 - ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`

@@ -30,13 +30,14 @@
 - `/compact [instructions]` — summarize conversation to free context; optional focus instructions
 - `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.)
 - `/context` — visualize context window usage
+- `/context [all]` — visualize current context usage as a colored grid; pass `all` to expand per-item breakdown in fullscreen mode
 - `/copy [N]` — copy assistant response (Nth-latest) to clipboard; press `w` to save to file
 - `/cost` — alias for `/usage`
 - `/debug [description]` — bundled Skill; enable debug logging for the session and analyze the debug log
 - `/desktop` (alias `/app`) — continue session in Claude Code Desktop app (macOS/Windows)
 - `/diff` — interactive diff viewer for uncommitted changes and per-turn diffs
 - `/doctor` — diagnose Claude Code install/settings; press `f` to have Claude fix issues
-- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately
+- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately; without argument opens interactive slider
 - `/exit` (alias `/quit`) — exit CLI
 - `/export [filename]` — export conversation as plain text
 - `/extra-usage` — configure extra usage to keep working past rate limits
@@ -66,6 +67,7 @@
 - `/powerup` — discover features through interactive lessons
 - `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly to view PR comments instead
 - `/privacy-settings` — view/update privacy settings (Pro/Max only)
+- `/radio` — open Claude FM lo-fi radio in your browser
 - `/recap` — one-line summary of current session
 - `/release-notes` — interactive changelog viewer
 - `/reload-plugins` — reload all active plugins without restart

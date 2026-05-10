@@ -34,7 +34,7 @@
 - paths field uses glob patterns to limit auto-invocation to matching files
 - shell field sets shell to bash (default) or powershell for !`command` execution
 - Skills can include supporting files (template.md, examples/, scripts/)
-- Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
+- Skills location priority: Managed > Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts
 - Live change detection for .claude/skills/ directories within current session
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
