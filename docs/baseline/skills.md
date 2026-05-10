@@ -51,6 +51,7 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- Claude can discover and invoke built-in slash commands (/init, /review, /security-review) via Skill tool
 
 ## Recommended
 - description should put key use case first to fit within character budget

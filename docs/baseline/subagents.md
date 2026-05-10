@@ -31,6 +31,7 @@
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
+- `effort` sets the effort level when the subagent is active, overriding the session effort level; subagents receive this via `effort.level` JSON input field and `$CLAUDE_EFFORT` environment variable
 - Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
 - Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>`

@@ -39,9 +39,9 @@
 - `mcp_tool` hooks support `${path}` substitution from the hook input JSON; require the MCP server to be already connected
 - `prompt` hooks default to a fast model with 30 s timeout; `agent` hooks default to 60 s
 - Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
-- `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
+- `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`) only Bash arg-form parsing is fully supported
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
-- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
+- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`, `effort` (object with `level` field); subagent context adds `agent_id`, `agent_type`
 - Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
@@ -55,7 +55,10 @@
 - Skill/agent frontmatter `hooks:` field: same JSON shape, scoped to component lifetime; supports `once: true` (only honored here)
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
 - Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
+- `CLAUDE_EFFORT` env var contains effort level (`low`, `medium`, `high`, `xhigh`, `max`); available to command and mcp_tool hooks
+- `CLAUDE_CODE_SESSION_ID` env var contains the current session ID in Bash tool subprocess environment
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- `PostToolUse` and `PostToolUseFailure` hook inputs include `duration_ms` (tool execution time excluding permission prompts and PreToolUse hooks)
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed

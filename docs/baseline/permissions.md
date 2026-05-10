@@ -53,6 +53,8 @@
 - Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`
 - `disableBypassPermissionsMode` works from any scope — a user can lock themselves out
 - Sandbox interaction: when sandbox enabled with `autoAllowBashIfSandboxed: true` (default), sandboxed Bash runs without prompts even with `ask: Bash(*)`; explicit deny still applies; `rm`/`rmdir` against `/`, home, or critical system paths still prompts
+- `permissions.deny` rules override PreToolUse hook's `permissionDecision: "ask"` — hook decisions cannot bypass deny rules
+- `settings.autoMode.hard_deny` allows auto mode classifier rules that unconditionally block specific tool calls
 
 ## Recommended
 - Use deny rules sparingly but decisively for secrets, credentials, and dangerous commands (`Read(./.env)`, `Read(./secrets/**)`, `Bash(curl *)`, `Bash(wget *)`)

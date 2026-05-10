@@ -29,19 +29,19 @@
 - Git keys: `attribution` (object with `commit` and `pr` strings; empty string hides), `includeGitInstructions`
 - Plugin keys: `enabledPlugins` (`{"plugin@marketplace": bool}`), `extraKnownMarketplaces`, `strictKnownMarketplaces` (managed), `blockedMarketplaces` (managed), `allowedChannelPlugins` (managed), `pluginTrustMessage` (managed)
 - Hooks keys: `hooks` (object), `disableAllHooks`, `allowManagedHooksOnly` (managed), `allowedHttpHookUrls`, `httpHookAllowedEnvVars`
-- MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`
+- MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`, `alwaysLoad` per-server option (v2.1.121+)
 - Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
 - Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
-- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
+- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny` (v2.1.136+); include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
-- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, plus a `.worktreeinclude` file for copying gitignored files into worktrees
+- Worktree keys: `worktree.baseRef` (`fresh`/`head`, v2.1.133+), `worktree.symlinkDirectories`, `worktree.sparsePaths`, plus a `.worktreeinclude` file for copying gitignored files into worktrees
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
 - Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
 - Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
-- Sandbox/security: `sandbox`, `disableSkillShellExecution`
+- Sandbox/security: `sandbox` (with `bwrapPath`, `socatPath` for Linux/WSL, v2.1.133+), `disableSkillShellExecution`
 - Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl` (v2.1.128+)
 - Session keys: `cleanupPeriodDays` (default 30, min 1), `skipWebFetchPreflight`
 - Windows-only managed: `wslInheritsWindowsSettings`
