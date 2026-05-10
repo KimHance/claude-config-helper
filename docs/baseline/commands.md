@@ -64,7 +64,6 @@
 - `/plan [description]` — enter plan mode (optionally with task description)
 - `/plugin` — manage plugins
 - `/powerup` — discover features through interactive lessons
-- `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly to view PR comments instead
 - `/privacy-settings` — view/update privacy settings (Pro/Max only)
 - `/recap` — one-line summary of current session
 - `/release-notes` — interactive changelog viewer
@@ -96,9 +95,6 @@
 - `/ultrareview [PR]` — deep multi-agent cloud review (Pro/Max free runs through 2026-05-05, then extra usage)
 - `/upgrade` — open upgrade page
 - `/usage` — show session cost, plan limits, activity stats
-- `/vim` — **Removed in v2.1.92**; toggle Vim editor mode via `/config → Editor mode`
-- `/voice [hold|tap|off]` — toggle voice dictation (claude.ai account required)
-- `/web-setup` — connect GitHub to Claude Code on the web via local `gh` CLI
 
 ## Recommended
 - Use `/help` first when unsure what is available — surface differs per platform/plan/environment

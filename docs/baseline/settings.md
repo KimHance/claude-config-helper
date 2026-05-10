@@ -70,7 +70,7 @@
 - Keep `permissions.deny` short and high-impact (secrets, dangerous commands); over-denying creates churn
 - Use `Bash(<prefix> *)` rule shape rather than naming every variant; first match wins so deny rules go first
 - Use `permissions.additionalDirectories` to grant file access without changing cwd
-- Use `claudeMdExcludes` (in `.claude/settings.local.json`) to skip ancestor CLAUDE.md noise in monorepos
+- Use `claudeMdExcludes` (in `.claude/settings.json` or `.claude/settings.local.json`) to skip ancestor CLAUDE.md noise in monorepos
 - Use `enabledPlugins: {"plugin@marketplace": false}` to disable a plugin per-scope without uninstalling
 - Use `attribution.commit` / `attribution.pr` empty strings (`""`) to hide Co-Authored-By trailers if undesired
 - Use `env` for telemetry config and feature flags; values are always strings

@@ -17,36 +17,53 @@
 - Local copy via `--plugin-dir` takes precedence over an installed plugin of the same name for that session, except when force-enabled in managed settings
 
 ## Advanced
-- Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings)
-- Only `plugin.json` belongs inside `.claude-plugin/`; everything else (`skills/`, `agents/`, `hooks/`, `commands/`, `.mcp.json`, etc.) lives at plugin root
-- Plugin manifest is **optional** — if `.claude-plugin/plugin.json` is absent, components are auto-discovered in default locations and the plugin name is derived from the directory name
-- Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries)
-- `version` field absent + git distribution → every commit counts as a new version; setting `version` makes updates explicit
-- Plugin install scopes (where `enabledPlugins` is recorded): `user` (default, `~/.claude/settings.json`), `project` (`.claude/settings.json`), `local` (`.claude/settings.local.json`, gitignored), `managed` (managed settings, read-only)
-- Plugin `settings.json` (plugin root): currently only `agent` and `subagentStatusLine` keys honored; `agent` activates one of the plugin's custom agents as the main thread system prompt
-- Plugin agent supported frontmatter fields: `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation`; the only valid `isolation` value is `"worktree"`
-- Plugin monitors require Claude Code v2.1.105 or later
-- Plugin monitor required fields: `name`, `command`, `description`; optional: `when` (`"always"` default, or `"on-skill-invoke:<skill-name>"`)
-- LSP server required fields: `command`, `extensionToLanguage`; optional: `args`, `transport` (`stdio`/`socket`), `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash`, `maxRestarts`
-- Plugin themes are experimental; live in `themes/` as JSON with `name`, `base` (preset), `overrides` (sparse color tokens)
-- Bundled-file env vars: `${CLAUDE_PLUGIN_ROOT}` (plugin install dir), `${CLAUDE_PLUGIN_DATA}` (persistent data dir, survives plugin updates)
-- Plugin agents have stricter security: `hooks`, `mcpServers`, and `permissionMode` frontmatter fields are silently ignored when loading from a plugin
-- Plugin MCP servers run from `.mcp.json` at plugin root (or inline `mcpServers` in `plugin.json`); start when plugin is enabled, stop when disabled
-- LSP servers in `.lsp.json` give Claude real-time code intelligence (per-language `command`, `args`, `extensionToLanguage` map); user must have the language server binary installed locally
-- Monitors in `monitors/monitors.json` watch logs/files/external status and push notifications to Claude during the session; each entry has `name`, `command`, optional `description`, `when` trigger
-- `bin/` directory: executables placed here are added to Bash tool's `PATH` while the plugin is enabled
-- Marketplace concept: a registry that lists installable plugins; users add a marketplace then install plugins from it
-- `extraKnownMarketplaces` settings key adds marketplace sources; sources are `github` (`{source: "github", repo: "owner/repo"}`), `git` (`{source: "git", url: "..."}`), `directory` (`{source: "directory", path: "/local/path"}` for development), `hostPattern` (`{source: "hostPattern", hostPattern: "regex"}`), or `settings` (`{source: "settings", name: "...", plugins: [...]}`)
-- Managed-only plugin policies: `strictKnownMarketplaces` (allowlist of marketplace sources, enforced before download), `blockedMarketplaces` (blocklist, enforced before download), `allowedChannelPlugins` (allowlist of channel plugins that may push messages, requires `channelsEnabled: true`), `pluginTrustMessage` (custom trust-warning text)
-- Force-enabled plugins: managed settings can pin a plugin to enabled; users cannot override; force-enabled plugins' hooks are exempt from `allowManagedHooksOnly`
-- Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation
-- Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins
-- Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing
-- After conversion, plugin version takes precedence when loaded
-- Default skill names from standalone (`/hello`) become namespaced (`/<plugin-name>:hello`) once converted
-- Plugin submission to official Anthropic marketplace: through `claude.ai/settings/plugins/submit` or `platform.claude.com/plugins/submit`
-- Plugins can prompt Claude Code users to install them via "plugin hints" (CLI integration)
-- Marketplaces can be hosted in private repositories for team-internal distribution
+Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings), and optionally `themes/` (color theme definitions) and `output-styles/` (output style definitions).
+
+Only `plugin.json` belongs inside `.claude-plugin/`; everything else (`skills/`, `agents/`, `hooks/`, `commands/`, `.mcp.json`, `themes/`, `output-styles/`, `monitors/`, `bin/`, `settings.json`, etc.) lives at plugin root.
+
+Plugin manifest is **optional** — if `.claude-plugin/plugin.json` is absent, components are auto-discovered in default locations and the plugin name is derived from the directory name.
+
+Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries).
+
+`version` field absent + git distribution → every commit counts as a new version; setting `version` makes updates explicit. Note: experimental components (themes and monitors) should be declared under `experimental: { ... }` rather than at top level.
+
+Plugin install scopes (where `enabledPlugins` is recorded): `user` (default, `~/.claude/settings.json`), `project` (`.claude/settings.json`), `local` (`.claude/settings.local.json`, gitignored), `managed` (managed settings, read-only).
+
+Plugin `settings.json` (plugin root): currently only `agent` and `subagentStatusLine` keys honored; `agent` activates one of the plugin's custom agents as the main thread system prompt.
+
+Plugin agent supported frontmatter fields: `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation`; the only valid `isolation` value is `"worktree"`. Plugin agents have stricter security: `hooks`, `mcpServers`, and `permissionMode` frontmatter fields are silently ignored when loading from a plugin.
+
+Plugin monitors require Claude Code v2.1.105 or later. Plugin monitor required fields: `name`, `command`, `description`; optional: `when` (`"always"` default, or `"on-skill-invoke:<skill-name>"`).
+
+LSP server required fields: `command`, `extensionToLanguage`; optional: `args`, `transport` (`stdio`/`socket`), `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash`, `maxRestarts`.
+
+Plugin themes are experimental; live in `themes/` as JSON with `name`, `base` (preset), `overrides` (sparse color tokens).
+
+Bundled-file env vars: `${CLAUDE_PLUGIN_ROOT}` (plugin install dir), `${CLAUDE_PLUGIN_DATA}` (persistent data dir, survives plugin updates).
+
+Plugin MCP servers run from `.mcp.json` at plugin root (or inline `mcpServers` in `plugin.json`); start when plugin is enabled, stop when disabled. LSP servers in `.lsp.json` give Claude real-time code intelligence (per-language `command`, `args`, `extensionToLanguage` map); user must have the language server binary installed locally.
+
+Monitors in `monitors/monitors.json` watch logs/files/external status and push notifications to Claude during the session; each entry has `name`, `command`, optional `description`, `when` trigger.
+
+`bin/` directory: executables placed here are added to Bash tool's `PATH` while the plugin is enabled.
+
+Marketplace concept: a registry that lists installable plugins; users add a marketplace then install plugins from it.
+
+`extraKnownMarketplaces` settings key adds marketplace sources; sources are `github` (`{source: "github", repo: "owner/repo"}`), `git` (`{source: "git", url: "..."}`), `directory` (`{source: "directory", path: "/local/path"}` for development), `hostPattern` (`{source: "hostPattern", hostPattern: "regex"}`), or `settings` (`{source: "settings", name: "...", plugins: [...]}`).
+
+Managed-only plugin policies: `strictKnownMarketplaces` (allowlist of marketplace sources, enforced before download), `blockedMarketplaces` (blocklist, enforced before download), `allowedChannelPlugins` (allowlist of channel plugins that may push messages, requires `channelsEnabled: true`), `pluginTrustMessage` (custom trust-warning text).
+
+Force-enabled plugins: managed settings can pin a plugin to enabled; users cannot override; force-enabled plugins' hooks are exempt from `allowManagedHooksOnly`.
+
+Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation.
+
+Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins.
+
+Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing. After conversion, plugin version takes precedence when loaded. Default skill names from standalone (`/hello`) become namespaced (`/<plugin-name>:hello`) once converted.
+
+Plugin submission to official Anthropic marketplace: through `claude.ai/settings/plugins/submit` or `platform.claude.com/plugins/submit`. Plugins can prompt Claude Code users to install them via "plugin hints" (CLI integration).
+
+Marketplaces can be hosted in private repositories for team-internal distribution.
 
 ## Recommended
 - Start with standalone (`.claude/`) for quick iteration; convert to a plugin only when ready to share

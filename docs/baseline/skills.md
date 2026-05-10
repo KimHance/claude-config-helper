@@ -51,6 +51,8 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- context: fork skills have access to deferred tools (WebSearch, WebFetch, etc.) on their first turn
+- Plugin skills declared via "skills": ["./"] now use the skill's frontmatter name for invocation
 
 ## Recommended
 - description should put key use case first to fit within character budget
@@ -74,5 +76,5 @@
 - Only plugin.json belongs in .claude-plugin/; everything else at plugin root
 - .claude/commands/ still works but skills/ is preferred for new development
 - Forked subagent context has no conversation history; write actionable tasks
-- context: fork only makes sense for skills with explicit instructions, not guidelines
+- context: fork only makes sense for skills with explicit instructions AND actionable task prompts, not guidelines
 - context: fork skills without actionable task prompt return without meaningful output
