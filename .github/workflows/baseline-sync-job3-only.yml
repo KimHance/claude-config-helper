@@ -1,0 +1,248 @@
+name: Baseline Sync — JOB3 only (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      job1_run_id:
+        description: "JOB1 run id"
+        required: true
+      job2_run_id:
+        description: "JOB2 run id"
+        required: true
+      dry_run:
+        description: "true = artifact only, false = create real PR"
+        default: 'true'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  job3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - name: fetch JOB1 artifact
+        env:
+          CRON_TOKEN_OVERRIDE: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/job1
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.fetch_run_artifacts \
+            ${{ github.repository }} ${{ inputs.job1_run_id }} /tmp/job1 baseline-sync-results || \
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.fetch_run_artifacts \
+            ${{ github.repository }} ${{ inputs.job1_run_id }} /tmp/job1 oracle-results
+          ls -R /tmp/job1 | head -40
+
+      - name: fetch JOB2 artifact
+        env:
+          CRON_TOKEN_OVERRIDE: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/job2
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.fetch_run_artifacts \
+            ${{ github.repository }} ${{ inputs.job2_run_id }} /tmp/job2 review-results
+          ls -R /tmp/job2 | head -40
+
+      - name: locate paths + extract metadata
+        id: meta
+        run: |
+          # JOB1 artifact path may be flat (historical) or under a directory
+          if [ -f /tmp/job1/tmp/apply-summary.json ]; then
+            J1=/tmp/job1/tmp
+          else
+            ART=$(ls -d /tmp/job1/*-results-* 2>/dev/null | grep -v '\.zip$' | head -1)
+            if [ -z "$ART" ]; then
+              ART=$(ls -d /tmp/job1/*results* 2>/dev/null | grep -v '\.zip$' | head -1)
+            fi
+            if [ -f "$ART/tmp/apply-summary.json" ]; then
+              J1=$ART/tmp
+            else
+              J1=$ART
+            fi
+          fi
+
+          # JOB2 artifact
+          J2=$(ls -d /tmp/job2/review-results-* 2>/dev/null | grep -v '\.zip$' | head -1)
+          if [ -z "$J2" ]; then
+            echo "ERROR: no review-results artifact found under /tmp/job2" >&2
+            ls -la /tmp/job2/ >&2 || true
+            exit 1
+          fi
+
+          echo "J1=$J1"
+          echo "J2=$J2"
+
+          echo "summary=$J1/apply-summary.json" >> $GITHUB_OUTPUT
+          echo "reports=$J1/oracle-reports" >> $GITHUB_OUTPUT
+          echo "diff=$J1/baseline-diff" >> $GITHUB_OUTPUT
+          echo "review=$J2" >> $GITHUB_OUTPUT
+          echo "new_version=$(cat $J2/new_version)" >> $GITHUB_OUTPUT
+          echo "bump_level=$(jq -r .level $J2/bump.json)" >> $GITHUB_OUTPUT
+          echo "bump_warning=$(jq -r .bump_warning $J2/bump.json)" >> $GITHUB_OUTPUT
+          echo "verdict=$(grep -E '^verdict: ' $J2/review-summary.md | head -1 | awk '{print $2}')" >> $GITHUB_OUTPUT
+          echo "bench_present=$(jq -r .bench_present $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "bench_q_susp=$(jq -r .bench_quality_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "bench_e_susp=$(jq -r .bench_efficiency_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+
+      - name: assemble values.json
+        env:
+          SUMMARY: ${{ steps.meta.outputs.summary }}
+          REPORTS: ${{ steps.meta.outputs.reports }}
+          NEW_V: ${{ steps.meta.outputs.new_version }}
+          BUMP_LEVEL: ${{ steps.meta.outputs.bump_level }}
+          BUMP_WARNING: ${{ steps.meta.outputs.bump_warning }}
+          VERDICT: ${{ steps.meta.outputs.verdict }}
+          BENCH_PRESENT: ${{ steps.meta.outputs.bench_present }}
+          BENCH_Q: ${{ steps.meta.outputs.bench_q_susp }}
+          BENCH_E: ${{ steps.meta.outputs.bench_e_susp }}
+          REVIEW: ${{ steps.meta.outputs.review }}
+          JOB1_RUN_ID: ${{ inputs.job1_run_id }}
+          JOB2_RUN_ID: ${{ inputs.job2_run_id }}
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          summary = json.loads(Path(os.environ["SUMMARY"]).read_text())
+          reports_dir = Path(os.environ["REPORTS"])
+          new_v = os.environ["NEW_V"]
+          bump_level = os.environ["BUMP_LEVEL"]
+          bump_warning = os.environ["BUMP_WARNING"] == "true"
+          verdict = os.environ["VERDICT"] or "pass"
+          bench_present = os.environ["BENCH_PRESENT"] == "true"
+          bench_q = os.environ["BENCH_Q"] == "true"
+          bench_e = os.environ["BENCH_E"] == "true"
+          run_id = os.environ["JOB1_RUN_ID"]
+          job2_id = os.environ["JOB2_RUN_ID"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          review_dir = Path(os.environ["REVIEW"])
+
+          try:
+              cur = json.loads(Path(".claude-plugin/plugin.json").read_text()).get("version", "0.0.0")
+          except Exception:
+              cur = "0.0.0"
+          old_v = cur
+
+          rows = []
+          per_file = []
+          for entry in summary.get("details", []):
+              cat = Path(entry["file"]).stem
+              ns = entry.get("changed_sections", 0)
+              if ns <= 0:
+                  continue
+              rep_path = reports_dir / f"{cat}.json"
+              first_reason = ""
+              section_bullets = []
+              if rep_path.exists():
+                  rep = json.loads(rep_path.read_text())
+                  for sec, info in (rep.get("sections") or {}).items():
+                      if info.get("changed"):
+                          if not first_reason:
+                              first_reason = info.get("reason", "")
+                          section_bullets.append(f"- **{cat}/{sec}**: {info.get('reason','')}")
+              rows.append(f"| {cat} | `{entry['file']}` | {first_reason} |")
+              per_file.extend(section_bullets)
+
+          warnings = []
+          if bump_warning:
+              warnings.append("- bump_warning: major bump 인데 diff 가 매우 작음. 정말 major 인지 재검토.")
+          if verdict != "pass":
+              warnings.append(f"- verdict 가 `{verdict}`. self-review 가 의심 신호 보고.")
+          if bench_q:
+              warnings.append("- benchmark 품질 의심: with-skill 점수 < baseline.")
+          if bench_e:
+              warnings.append("- benchmark 효율 의심: with-skill 토큰 > baseline.")
+          warnings_block = ("## 위험 신호\n" + "\n".join(warnings)) if warnings else ""
+
+          try:
+              bump_reason = json.loads((review_dir / "bump.json").read_text()).get("reason", "")
+          except Exception:
+              bump_reason = ""
+
+          values = {
+              "RELEASES_BULLETS": "(자동 추출 미구현 — Task 후속에서 changelog parsing 추가)",
+              "CHANGED_TABLE_ROWS": "\n".join(rows) if rows else "| — | — | — |",
+              "PER_FILE_CHANGE_BULLETS": "\n".join(per_file) if per_file else "변경 없음",
+              "REVIEW_TABLE_ROWS": f"| (전체) | — | verdict={verdict} |",
+              "REVIEW_ISSUES_BLOCK": "",
+              "GATE_LABEL": {"pass": "통과", "warn": "경고", "block": "차단"}.get(verdict, verdict),
+              "VERDICT": verdict,
+              "BENCH_TABLE": "",
+              "BENCH_SKIPPED": "true" if not bench_present else "",
+              "BUMP_LEVEL": bump_level,
+              "OLD_VERSION": old_v,
+              "NEW_VERSION": new_v,
+              "BUMP_REASON": bump_reason,
+              "WARNINGS": warnings_block,
+              "RUN_ID": run_id,
+              "ORACLE_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
+              "REVIEW_URL": f"https://github.com/{repo}/actions/runs/{job2_id}",
+              "RUN_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
+          }
+          Path("/tmp/values.json").write_text(json.dumps(values, indent=2, ensure_ascii=False))
+          print("values.json written")
+          PY
+
+      - name: render PR body
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.assemble_pr_body \
+            .github/templates/pr-body.md.tmpl /tmp/values.json /tmp/pr-body.md
+          echo "--- PR body preview ---"
+          head -80 /tmp/pr-body.md
+
+      - name: pick labels
+        id: labels
+        run: |
+          LABELS='["baseline-sync", "verdict-${{ steps.meta.outputs.verdict }}", "bump-${{ steps.meta.outputs.bump_level }}"]'
+          if [ "${{ steps.meta.outputs.bump_warning }}" = "true" ]; then
+            LABELS=$(jq -c '. + ["bump-suspect"]' <<< "$LABELS")
+          fi
+          if [ "${{ steps.meta.outputs.bench_q_susp }}" = "true" ] || [ "${{ steps.meta.outputs.bench_e_susp }}" = "true" ]; then
+            LABELS=$(jq -c '. + ["bench-suspect"]' <<< "$LABELS")
+          fi
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+          echo "labels: $LABELS"
+
+      - name: pick reviewers
+        id: reviewers
+        run: |
+          REVIEWERS='[]'
+          if [ "${{ steps.meta.outputs.verdict }}" != "pass" ] || \
+             [ "${{ steps.meta.outputs.bump_warning }}" = "true" ] || \
+             [ "${{ steps.meta.outputs.bench_q_susp }}" = "true" ] || \
+             [ "${{ steps.meta.outputs.bench_e_susp }}" = "true" ]; then
+            REVIEWERS='["KimHance"]'
+          fi
+          echo "reviewers=$REVIEWERS" >> $GITHUB_OUTPUT
+          echo "reviewers: $REVIEWERS"
+
+      - name: upload artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-finalize-${{ inputs.job1_run_id }}
+          path: |
+            /tmp/pr-body.md
+            /tmp/values.json
+          if-no-files-found: warn
+
+      - name: dry-run notice
+        if: inputs.dry_run == 'true'
+        run: |
+          echo "::notice ::dry_run=true → PR 생성 안 함. artifact 의 pr-body.md 확인."
+
+      - name: would-create-pr (dry-run skip)
+        if: inputs.dry_run == 'false'
+        run: |
+          echo "::warning ::JOB3-only dev workflow does not create real PRs (no source branch managed here). Use baseline-sync.yml (Task 11) for real PR creation."
