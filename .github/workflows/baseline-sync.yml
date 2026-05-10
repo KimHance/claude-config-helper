@@ -1,14 +1,20 @@
 name: Baseline Sync
 
 # 베이스라인 룰 파일을 공식 docs 와 비교해 의미가 달라진 섹션만 갱신.
-# 결과는 artifact 로 회수. PR 생성·라벨링·리뷰어 지정은 후속 스펙.
+# JOB1: oracle-sync + commit to branch
+# JOB2: self-review + version bump (needs JOB1)
+# JOB3: PR 생성 + 라벨링 + 리뷰어 지정 (needs JOB1+2)
 
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * 1'  # 매주 월요일 03:00 UTC
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
+  pull-requests: write
+  issues: write
 
 env:
   REPORTS_DIR: /tmp/baseline-sync-reports
@@ -16,8 +22,12 @@ env:
   MAPPING_FILE: .github/criteria-mapping.yml
 
 jobs:
-  oracle-update:
+  sync-and-commit:
     runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.create-branch.outputs.branch }}
+      has_changes: ${{ steps.gate.outputs.has_changes }}
+      run_id: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -170,6 +180,34 @@ jobs:
           done
           ls -la /tmp/baseline-diff
 
+      - name: gate (no change?)
+        id: gate
+        run: |
+          if [ -z "$(ls -A /tmp/baseline-diff/)" ] || \
+             [ "$(cat /tmp/baseline-diff/*.diff 2>/dev/null | wc -c)" = "0" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "::notice ::no baseline drift — JOB2/3 will skip"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: create branch + commit baseline
+        id: create-branch
+        if: steps.gate.outputs.has_changes == 'true'
+        run: |
+          BRANCH="baseline-sync/run-${{ github.run_id }}-$(date -u +%Y-%m-%d)"
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add docs/baseline/
+          git commit -m "chore(baseline): sync from docs (run ${{ github.run_id }})"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: push branch
+        if: steps.gate.outputs.has_changes == 'true'
+        run: |
+          git push origin "${{ steps.create-branch.outputs.branch }}"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -180,4 +218,419 @@ jobs:
             /tmp/baseline-diff/*.diff
             ${{ env.BASELINE_DIR }}/*.md
           retention-days: 30
+          if-no-files-found: warn
+
+  project-review:
+    runs-on: ubuntu-latest
+    needs: sync-and-commit
+    if: needs.sync-and-commit.outputs.has_changes == 'true'
+    outputs:
+      verdict: ${{ steps.meta.outputs.verdict }}
+      bump_level: ${{ steps.validate.outputs.level }}
+      bump_warning: ${{ steps.validate.outputs.warning }}
+      new_version: ${{ steps.read_version.outputs.new_version }}
+      bench_present: ${{ steps.bench_meta.outputs.present }}
+      bench_q_susp: ${{ steps.bench_meta.outputs.q_susp }}
+      bench_e_susp: ${{ steps.bench_meta.outputs.e_susp }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sync-and-commit.outputs.branch }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: baseline-sync-results-${{ needs.sync-and-commit.outputs.run_id }}
+          path: /tmp/job1-art
+
+      - name: locate fixture paths
+        id: paths
+        run: |
+          # actions/download-artifact@v4 extracts flat into the path directory.
+          # Files from artifact are stored under /tmp/job1-art preserving their
+          # internal directory structure (tmp/... or direct).
+          if [ -f /tmp/job1-art/tmp/apply-summary.json ]; then
+            echo "summary=/tmp/job1-art/tmp/apply-summary.json" >> $GITHUB_OUTPUT
+            echo "reports=/tmp/job1-art/tmp/baseline-sync-reports" >> $GITHUB_OUTPUT
+            echo "diff=/tmp/job1-art/tmp/baseline-diff" >> $GITHUB_OUTPUT
+          elif [ -f /tmp/job1-art/apply-summary.json ]; then
+            echo "summary=/tmp/job1-art/apply-summary.json" >> $GITHUB_OUTPUT
+            echo "reports=/tmp/job1-art/baseline-sync-reports" >> $GITHUB_OUTPUT
+            echo "diff=/tmp/job1-art/baseline-diff" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: apply-summary.json not found under /tmp/job1-art" >&2
+            find /tmp/job1-art -type f | head -30 >&2
+            exit 1
+          fi
+
+      - name: prepare-review-input
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.prepare_review_input \
+            ${{ steps.paths.outputs.summary }} \
+            ${{ steps.paths.outputs.reports }} \
+            ${{ steps.paths.outputs.diff }} \
+            /tmp/review-input.md
+          wc -l /tmp/review-input.md
+
+      - name: self-review + bump (claude)
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write
+          prompt: |
+            너는 baseline-sync JOB 2 의 self-review 도우미다.
+
+            입력: /tmp/review-input.md (변경된 카테고리만 묶여 있음)
+
+            절차:
+            1) /tmp/review-input.md 를 Read.
+            2) 각 카테고리의 diff + reasons 를 보고 다음 4개 항목으로 sanity 감사:
+               - 동의어 swap 만 한 변경인지 (의미 같으면 의심)
+               - SDK 사실이 끼어든 흔적이 있는지
+               - 한 섹션 삭제율이 > 50% 인 게 있는지
+               - 모든 reason 이 source URL 을 가졌는지
+            3) verdict 결정 (pass / warn / block).
+               - 1~3 모두 정상이고 4 도 만족 → pass
+               - 의심 신호 1개 이상 → warn
+               - baseline 본문이 통째로 비어있거나 명백히 망가짐 → block
+            4) bump 결정. 다음 rubric:
+               - patch: 표현/예시/오타. 의미 동일.
+               - minor: 신규 사실 추가. 기존 가이드 무력화 없음.
+               - major: 기존 가이드와 충돌, deprecated, 의미 변경.
+            5) 다음 두 파일을 Write:
+               (a) /tmp/review-summary.md — 표 + 카테고리별 한 줄 평 + verdict
+                   markdown 형식. 다음 두 줄을 마지막에 박아라:
+                   `verdict: <pass|warn|block>`
+                   `bump_level_hint: <patch|minor|major>`   (참고용)
+               (b) /tmp/bump.json — 다음 schema 정확히:
+                   {
+                     "level": "patch|minor|major",
+                     "reason": "...한 줄 사유...",
+                     "evidence_files": ["docs/baseline/<cat>.md", ...]
+                   }
+                   evidence_files 에는 실제로 변경된 baseline 파일 경로만 기재.
+            6) 마지막 한 줄로 "DONE" 출력.
+
+      - name: validate-bump
+        id: validate
+        run: |
+          TOTAL=$(wc -l ${{ steps.paths.outputs.diff }}/*.diff 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.validate_bump \
+            /tmp/bump.json ${{ steps.paths.outputs.diff }} $TOTAL > /tmp/bump.validated.json
+          mv /tmp/bump.validated.json /tmp/bump.json
+          cat /tmp/bump.json
+          echo "level=$(jq -r .level /tmp/bump.json)" >> $GITHUB_OUTPUT
+          echo "warning=$(jq -r .bump_warning /tmp/bump.json)" >> $GITHUB_OUTPUT
+
+      - name: apply-bump
+        run: |
+          NEW=$(PYTHONPATH=cron cron/.venv/bin/python -m scripts.apply_bump \
+            .claude-plugin/plugin.json ${{ steps.validate.outputs.level }})
+          echo "new version: $NEW"
+          echo "$NEW" > /tmp/new_version
+
+      - name: read new version
+        id: read_version
+        run: |
+          echo "new_version=$(cat /tmp/new_version)" >> $GITHUB_OUTPUT
+
+      - name: meta (parse verdict from review-summary.md)
+        id: meta
+        run: |
+          VERDICT=$(grep -E '^verdict: ' /tmp/review-summary.md | head -1 | awk '{print $2}' || echo "pass")
+          echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
+
+      - name: format-bench-results (skip if no bench dir)
+        run: |
+          mkdir -p /tmp/bench
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.format_bench_results \
+            /tmp/bench /tmp/bench-summary.json
+          cat /tmp/bench-summary.json
+
+      - name: bench meta (parse bench-summary.json)
+        id: bench_meta
+        run: |
+          echo "present=$(jq -r .bench_present /tmp/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "q_susp=$(jq -r .bench_quality_suspicious /tmp/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "e_susp=$(jq -r .bench_efficiency_suspicious /tmp/bench-summary.json)" >> $GITHUB_OUTPUT
+
+      - name: commit + push version bump
+        run: |
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+          git add .claude-plugin/plugin.json
+          git commit -m "chore(version): bump to $(cat /tmp/new_version)"
+          git push origin "${{ needs.sync-and-commit.outputs.branch }}"
+
+      - name: upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-results-${{ github.run_id }}
+          path: |
+            /tmp/review-input.md
+            /tmp/review-summary.md
+            /tmp/bump.json
+            /tmp/bench-summary.json
+            /tmp/new_version
+          if-no-files-found: warn
+          retention-days: 30
+
+  create-pr:
+    runs-on: ubuntu-latest
+    needs: [sync-and-commit, project-review]
+    if: needs.sync-and-commit.outputs.has_changes == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sync-and-commit.outputs.branch }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: install cron deps
+        working-directory: cron
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[dev]"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: baseline-sync-results-${{ needs.sync-and-commit.outputs.run_id }}
+          path: /tmp/job1-art
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: review-results-${{ needs.sync-and-commit.outputs.run_id }}
+          path: /tmp/job2-art
+
+      - name: locate paths + extract metadata
+        id: meta
+        run: |
+          # JOB1 artifact layout
+          if [ -f /tmp/job1-art/tmp/apply-summary.json ]; then
+            J1=/tmp/job1-art/tmp
+          elif [ -f /tmp/job1-art/apply-summary.json ]; then
+            J1=/tmp/job1-art
+          else
+            echo "ERROR: apply-summary.json not found under /tmp/job1-art" >&2
+            find /tmp/job1-art -type f | head -30 >&2
+            exit 1
+          fi
+
+          # JOB2 artifact layout (flat extraction by actions/download-artifact@v4)
+          if [ -f /tmp/job2-art/review-summary.md ]; then
+            J2=/tmp/job2-art
+          else
+            echo "ERROR: review-summary.md not found under /tmp/job2-art" >&2
+            find /tmp/job2-art -type f | head -30 >&2
+            exit 1
+          fi
+
+          echo "summary=$J1/apply-summary.json" >> $GITHUB_OUTPUT
+          echo "reports=$J1/baseline-sync-reports" >> $GITHUB_OUTPUT
+          echo "diff=$J1/baseline-diff" >> $GITHUB_OUTPUT
+          echo "review=$J2" >> $GITHUB_OUTPUT
+          echo "new_version=$(cat $J2/new_version)" >> $GITHUB_OUTPUT
+          echo "bump_level=$(jq -r .level $J2/bump.json)" >> $GITHUB_OUTPUT
+          echo "bump_warning=$(jq -r .bump_warning $J2/bump.json)" >> $GITHUB_OUTPUT
+          echo "verdict=$(grep -E '^verdict: ' $J2/review-summary.md | head -1 | awk '{print $2}')" >> $GITHUB_OUTPUT
+          echo "bench_present=$(jq -r .bench_present $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "bench_q_susp=$(jq -r .bench_quality_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "bench_e_susp=$(jq -r .bench_efficiency_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+
+      - name: assemble values.json
+        env:
+          SUMMARY: ${{ steps.meta.outputs.summary }}
+          REPORTS: ${{ steps.meta.outputs.reports }}
+          NEW_V: ${{ steps.meta.outputs.new_version }}
+          BUMP_LEVEL: ${{ steps.meta.outputs.bump_level }}
+          BUMP_WARNING: ${{ steps.meta.outputs.bump_warning }}
+          VERDICT: ${{ steps.meta.outputs.verdict }}
+          BENCH_PRESENT: ${{ steps.meta.outputs.bench_present }}
+          BENCH_Q: ${{ steps.meta.outputs.bench_q_susp }}
+          BENCH_E: ${{ steps.meta.outputs.bench_e_susp }}
+          REVIEW: ${{ steps.meta.outputs.review }}
+          RUN_ID: ${{ needs.sync-and-commit.outputs.run_id }}
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          summary = json.loads(Path(os.environ["SUMMARY"]).read_text())
+          reports_dir = Path(os.environ["REPORTS"])
+          new_v = os.environ["NEW_V"]
+          bump_level = os.environ["BUMP_LEVEL"]
+          bump_warning = os.environ["BUMP_WARNING"] == "true"
+          verdict = os.environ["VERDICT"] or "pass"
+          bench_present = os.environ["BENCH_PRESENT"] == "true"
+          bench_q = os.environ["BENCH_Q"] == "true"
+          bench_e = os.environ["BENCH_E"] == "true"
+          run_id = os.environ["RUN_ID"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          review_dir = Path(os.environ["REVIEW"])
+
+          try:
+              cur = json.loads(Path(".claude-plugin/plugin.json").read_text()).get("version", "0.0.0")
+          except Exception:
+              cur = "0.0.0"
+          old_v = cur
+
+          rows = []
+          per_file = []
+          for entry in summary.get("details", []):
+              cat = Path(entry["file"]).stem
+              ns = entry.get("changed_sections", 0)
+              if ns <= 0:
+                  continue
+              rep_path = reports_dir / f"{cat}.json"
+              first_reason = ""
+              section_bullets = []
+              if rep_path.exists():
+                  rep = json.loads(rep_path.read_text())
+                  for sec, info in (rep.get("sections") or {}).items():
+                      if info.get("changed"):
+                          if not first_reason:
+                              first_reason = info.get("reason", "")
+                          section_bullets.append(f"- **{cat}/{sec}**: {info.get('reason','')}")
+              rows.append(f"| {cat} | `{entry['file']}` | {first_reason} |")
+              per_file.extend(section_bullets)
+
+          warnings = []
+          if bump_warning:
+              warnings.append("- bump_warning: major bump 인데 diff 가 매우 작음. 정말 major 인지 재검토.")
+          if verdict != "pass":
+              warnings.append(f"- verdict 가 `{verdict}`. self-review 가 의심 신호 보고.")
+          if bench_q:
+              warnings.append("- benchmark 품질 의심: with-skill 점수 < baseline.")
+          if bench_e:
+              warnings.append("- benchmark 효율 의심: with-skill 토큰 > baseline.")
+          warnings_block = ("## 위험 신호\n" + "\n".join(warnings)) if warnings else ""
+
+          try:
+              bump_reason = json.loads((review_dir / "bump.json").read_text()).get("reason", "")
+          except Exception:
+              bump_reason = ""
+
+          values = {
+              "RELEASES_BULLETS": "(자동 추출 미구현 — Task 후속에서 changelog parsing 추가)",
+              "CHANGED_TABLE_ROWS": "\n".join(rows) if rows else "| — | — | — |",
+              "PER_FILE_CHANGE_BULLETS": "\n".join(per_file) if per_file else "변경 없음",
+              "REVIEW_TABLE_ROWS": f"| (전체) | — | verdict={verdict} |",
+              "REVIEW_ISSUES_BLOCK": "",
+              "GATE_LABEL": {"pass": "통과", "warn": "경고", "block": "차단"}.get(verdict, verdict),
+              "VERDICT": verdict,
+              "BENCH_TABLE": "",
+              "BENCH_SKIPPED": "true" if not bench_present else "",
+              "BUMP_LEVEL": bump_level,
+              "OLD_VERSION": old_v,
+              "NEW_VERSION": new_v,
+              "BUMP_REASON": bump_reason,
+              "WARNINGS": warnings_block,
+              "RUN_ID": run_id,
+              "ORACLE_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
+              "REVIEW_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
+              "RUN_URL": f"https://github.com/{repo}/actions/runs/{run_id}",
+          }
+          Path("/tmp/values.json").write_text(json.dumps(values, indent=2, ensure_ascii=False))
+          print("values.json written")
+          PY
+
+      - name: render PR body
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.assemble_pr_body \
+            .github/templates/pr-body.md.tmpl /tmp/values.json /tmp/pr-body.md
+          echo "--- PR body preview ---"
+          head -80 /tmp/pr-body.md
+
+      - name: pick labels
+        id: labels
+        run: |
+          LABELS='["baseline-sync", "verdict-${{ steps.meta.outputs.verdict }}", "bump-${{ steps.meta.outputs.bump_level }}"]'
+          if [ "${{ steps.meta.outputs.bump_warning }}" = "true" ]; then
+            LABELS=$(jq -c '. + ["bump-suspect"]' <<< "$LABELS")
+          fi
+          if [ "${{ steps.meta.outputs.bench_q_susp }}" = "true" ] || [ "${{ steps.meta.outputs.bench_e_susp }}" = "true" ]; then
+            LABELS=$(jq -c '. + ["bench-suspect"]' <<< "$LABELS")
+          fi
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+          echo "labels: $LABELS"
+
+      - name: pick reviewers
+        id: reviewers
+        run: |
+          REVIEWERS='[]'
+          if [ "${{ steps.meta.outputs.verdict }}" != "pass" ] || \
+             [ "${{ steps.meta.outputs.bump_warning }}" = "true" ] || \
+             [ "${{ steps.meta.outputs.bench_q_susp }}" = "true" ] || \
+             [ "${{ steps.meta.outputs.bench_e_susp }}" = "true" ]; then
+            REVIEWERS='["KimHance"]'
+          fi
+          echo "reviewers=$REVIEWERS" >> $GITHUB_OUTPUT
+          echo "reviewers: $REVIEWERS"
+
+      - name: create PR
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY=$(jq -Rs . < /tmp/pr-body.md)
+          RESP=$(curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls \
+            -d "{
+              \"title\": \"chore: baseline 동기화 v${{ steps.meta.outputs.new_version }} ($(date -u +%Y-%m-%d))\",
+              \"head\": \"${{ needs.sync-and-commit.outputs.branch }}\",
+              \"base\": \"main\",
+              \"body\": $BODY
+            }")
+          PR_NUMBER=$(echo "$RESP" | jq -r '.number')
+          if [ "$PR_NUMBER" = "null" ]; then
+            echo "PR creation failed:"; echo "$RESP" | jq .; exit 1
+          fi
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "::notice ::PR #$PR_NUMBER created"
+
+      - name: apply labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ steps.create_pr.outputs.pr_number }}/labels \
+            -d "{\"labels\": ${{ steps.labels.outputs.labels }}}" || true
+
+      - name: request reviewers (only if suspicion)
+        if: steps.reviewers.outputs.reviewers != '[]'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.create_pr.outputs.pr_number }}/requested_reviewers \
+            -d "{\"reviewers\": ${{ steps.reviewers.outputs.reviewers }}}"
+
+      - name: upload artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-finalize-${{ github.run_id }}
+          path: |
+            /tmp/pr-body.md
+            /tmp/values.json
           if-no-files-found: warn
