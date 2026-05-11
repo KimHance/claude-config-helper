@@ -45,18 +45,20 @@ def count_configurable_surfaces(added_lines: list[str]) -> int:
 
 
 def extract_added_lines(diff_dir: Path) -> list[str]:
-    """Return all `+ ` (added) lines from every diff file in diff_dir.
+    """Return all added-line content from every diff file in diff_dir.
 
-    Excludes diff headers (`+++ ` lines).
+    Any diff line starting with `+` (and not the `+++ ` new-file header) is
+    considered an addition. Content after the leading `+` is returned, so
+    markdown bullet `+- foo` yields `- foo`.
     """
     out: list[str] = []
     for diff_file in diff_dir.glob("*.diff"):
         for line in diff_file.read_text().splitlines():
-            if line.startswith("+++ ") or not line.startswith("+"):
+            if line.startswith("+++ "):
                 continue
-            if len(line) < 2 or line[1] != " ":
+            if not line.startswith("+"):
                 continue
-            out.append(line[2:])
+            out.append(line[1:])
     return out
 
 

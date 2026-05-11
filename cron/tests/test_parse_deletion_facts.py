@@ -34,6 +34,29 @@ def test_extracts_deleted_line(tmp_path: Path):
     assert "skipDangerousModePermissionPrompt" in out[0]["deleted_line"]
 
 
+def test_extracts_markdown_bullet_deletion(tmp_path: Path):
+    """Markdown bullet `- foo` deleted appears in diff as `-- foo`."""
+    summary = {"details": [
+        {"file": "docs/baseline/commands.md", "changed_sections": 1}
+    ]}
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    (reports_dir / "commands.json").write_text('{"sections": {}}')
+    diff_dir = tmp_path / "diff"
+    diff_dir.mkdir()
+    diff_dir.joinpath("commands.md.diff").write_text(
+        "--- /tmp/baseline-before/commands.md\n"
+        "+++ docs/baseline/commands.md\n"
+        "@@\n"
+        "-- `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly\n"
+        "-- `/vim` — **Removed in v2.1.92**; toggle Vim editor mode\n"
+    )
+    out = extract_deletions(summary, reports_dir, diff_dir)
+    assert len(out) == 2
+    assert "/pr-comments" in out[0]["deleted_line"]
+    assert "/vim" in out[1]["deleted_line"]
+
+
 def test_ignores_diff_header_lines(tmp_path: Path):
     """diff header `---` lines must not be treated as deletions."""
     summary = {"details": [

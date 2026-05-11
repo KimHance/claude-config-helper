@@ -8,8 +8,9 @@ from pathlib import Path
 def extract_deletions(apply_summary: dict, reports_dir: Path, diff_dir: Path) -> list[dict]:
     """Return list of {category, deleted_line} for each removed baseline line.
 
-    A "deletion" is a diff line starting with `- ` (one minus, one space) that
-    is not a diff header (lines starting with `--- `).
+    A "deletion" is any diff line starting with `-` that is not a diff
+    header (`--- ` old-file marker). Content after the leading `-` is the
+    deleted line, including markdown bullet `- ` prefix when present.
     """
     out: list[dict] = []
     for entry in apply_summary.get("details", []):
@@ -20,13 +21,13 @@ def extract_deletions(apply_summary: dict, reports_dir: Path, diff_dir: Path) ->
         if not diff_file.exists():
             continue
         for line in diff_file.read_text().splitlines():
-            if line.startswith("--- ") or line.startswith("+++ "):
+            # unified-diff old-file header
+            if line.startswith("--- "):
                 continue
+            # ignore @@ hunks and context lines (starting with space)
             if not line.startswith("-"):
                 continue
-            if len(line) < 2 or line[1] != " ":
-                continue
-            removed = line[2:].strip()
+            removed = line[1:].strip()
             if not removed:
                 continue
             out.append({"category": cat, "deleted_line": removed})

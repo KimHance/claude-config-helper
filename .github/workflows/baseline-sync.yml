@@ -135,13 +135,31 @@ jobs:
                         (settings-related anti-patterns often live here,
                         e.g., skipDangerousModePermissionPrompt is a
                         settings key, not a permissions key)
+                      - https://code.claude.com/docs/en/env-vars
+                        (env var anti-patterns often live here, e.g.,
+                        CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN is on this
+                        page, not /settings)
                       - changelog (already fetched in STEP 2(b)) — check
                         for deprecation notice.
-                   3. Only if absent from ALL THREE pages AND no
+                   3. Only if absent from ALL FOUR pages (main +
+                      /settings + /env-vars + /changelog) AND no
                       deprecation notice exists -> propose deletion.
                       Single-page absence is INSUFFICIENT.
-                   4. If proposing deletion, the reason MUST cite all 3
+                   4. If proposing deletion, the reason MUST cite all 4
                       sources checked and the substring searched.
+                   5. CRITICAL: Lines like "/foo — Removed in vX.Y.Z;
+                      use Z instead" or "/foo — Replaced by /bar" are
+                      INTENTIONAL anti-pattern reminders. They serve
+                      users who still type the old command. DO NOT
+                      remove them just because the docs still document
+                      them with a max-version marker; the very fact that
+                      docs still document them (with a removal note)
+                      confirms users still need this reminder.
+                   6. SILENT deletion is forbidden. If you drop any
+                      existing line/bullet from new_body, you MUST
+                      explicitly mention it in reason with the words
+                      "REMOVED:" followed by the dropped content. Failing
+                      to do so is a self-review failure.
 
                STEP 3 — DECISION TREE per section.
                  For each of the 4 sections (Fundamentals, Advanced,
@@ -720,15 +738,17 @@ jobs:
             INVALID=$(jq '[.[] | select(.valid == false)] | length' /tmp/cross-check.json)
             TOTAL=$(jq length /tmp/cross-check.json)
             echo "C8 result: $INVALID of $TOTAL deletions INVALID"
+            jq '.' /tmp/cross-check.json
             if [ "$INVALID" -gt 0 ]; then
-              tmp=$(mktemp)
-              jq --arg note "C8 detected $INVALID invalid deletion(s) — cross-check trio found the fact in docs" \
-                '.bump_warning = true | .validation_notes = ((.validation_notes // "") + " | " + $note)' \
-                /tmp/bump.json > "$tmp" && mv "$tmp" /tmp/bump.json
-              echo "::warning ::$INVALID invalid deletion(s) detected by C8 cross-check trio"
+              echo "::error ::$INVALID invalid deletion(s) detected by C8 cross-check trio."
+              echo "::error ::Cross-check trio found the deleted fact(s) in official docs (likely on /settings or /env-vars page, not the category's main page)."
+              echo "::error ::The oracle hallucinated by silently dropping a fact that still exists in docs. PR creation is HALTED to prevent bad merge."
+              echo "::error ::Inspect /tmp/cross-check.json (in artifact) to see which deletions failed and which pages had the fact."
+              # Fail the step → JOB 3 (create-pr) will not run (needs: project-review).
+              exit 1
             fi
           else
-            echo "::warning ::cross-check.json missing — C8 did not write output"
+            echo "::warning ::cross-check.json missing — C8 did not write output (oracle may have not run cross-check). Continuing without enforcement."
           fi
 
       - name: format-bench-results
