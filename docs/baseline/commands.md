@@ -29,14 +29,14 @@
 - `/color [color|default]` — set prompt-bar color (`red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan`); use `default` to reset, or run with no argument to pick a random color; syncs to claude.ai/code under Remote Control
 - `/compact [instructions]` — summarize conversation to free context; optional focus instructions
 - `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.)
-- `/context` — visualize context window usage
+- `/context [all]` — visualize context window usage; shows optimization suggestions for context-heavy tools, memory bloat, and capacity warnings; pass `all` in fullscreen mode to expand the per-item breakdown
 - `/copy [N]` — copy assistant response (Nth-latest) to clipboard; press `w` to save to file
 - `/cost` — alias for `/usage`
 - `/debug [description]` — bundled Skill; enable debug logging for the session and analyze the debug log
 - `/desktop` (alias `/app`) — continue session in Claude Code Desktop app (macOS/Windows)
 - `/diff` — interactive diff viewer for uncommitted changes and per-turn diffs
 - `/doctor` — diagnose Claude Code install/settings; press `f` to have Claude fix issues
-- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately; without an argument, opens an interactive slider
+- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); available levels depend on the model and `max` is session-only; takes effect immediately; without an argument, opens an interactive slider
 - `/exit` (alias `/quit`) — exit CLI
 - `/export [filename]` — export conversation as plain text
 - `/extra-usage` — configure extra usage to keep working past rate limits
@@ -44,7 +44,7 @@
 - `/feedback [report]` (alias `/bug`) — submit feedback
 - `/fewer-permission-prompts` — bundled Skill; scans transcripts and adds an allowlist to project settings
 - `/focus` — toggle focus view (last prompt + tool summary + final response); fullscreen-only; persists per `viewMode`
-- `/heapdump` — write JS heap snapshot to `~/Desktop` for diagnosing memory issues
+- `/heapdump` — write JS heap snapshot to `~/Desktop` (or home directory on Linux without a Desktop folder) for diagnosing memory issues
 - `/help` — show help and available commands
 - `/hooks` — view hook configurations
 - `/ide` — manage IDE integrations
@@ -63,8 +63,7 @@
 - `/permissions` (alias `/allowed-tools`) — manage allow/ask/deny rules; review auto mode denials
 - `/plan [description]` — enter plan mode (optionally with task description)
 - `/plugin` — manage plugins
-- `/powerup` — discover features through interactive lessons
-- `/pr-comments [PR]` — **Removed in v2.1.91**; ask Claude directly to view PR comments instead
+- `/powerup` — discover features through interactive lessons with animated demos
 - `/privacy-settings` — view/update privacy settings (Pro/Max only)
 - `/radio` — open Claude FM lo-fi radio in browser; prints stream URL when no browser available (not available on Bedrock, Vertex, or Foundry)
 - `/recap` — one-line summary of current session
@@ -88,7 +87,7 @@
 - `/statusline` — configure status line; auto-configures from shell prompt without args
 - `/stickers` — order Claude Code stickers
 - `/tasks` (alias `/bashes`) — list/manage background tasks
-- `/team-onboarding` — generate team onboarding guide from past 30 days of usage
+- `/team-onboarding` — generate team onboarding guide from past 30 days of usage; for claude.ai subscribers on Pro, Max, Team, and Enterprise plans, also returns a share link teammates can open directly in Claude Code
 - `/teleport` (alias `/tp`) — pull a Claude Code web session into this terminal (claude.ai subscription required)
 - `/terminal-setup` — configure terminal keybindings (visible only in terminals that need it: VS Code, Cursor, Windsurf, Alacritty, Zed)
 - `/theme` — change color theme; supports `auto`, light/dark, daltonized, ANSI, custom themes from `~/.claude/themes/` or plugins
@@ -97,7 +96,6 @@
 - `/ultrareview [PR]` — deep multi-agent cloud review (Pro/Max free runs through 2026-05-05, then extra usage)
 - `/upgrade` — open upgrade page
 - `/usage` — show session cost, plan limits, activity stats
-- `/vim` — **Removed in v2.1.92**; toggle Vim editor mode via `/config → Editor mode`
 - `/voice [hold|tap|off]` — toggle voice dictation (claude.ai account required)
 - `/web-setup` — connect GitHub to Claude Code on the web via local `gh` CLI
 

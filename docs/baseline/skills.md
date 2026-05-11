@@ -6,6 +6,7 @@
 
 ## Fundamentals
 - Skills follow Agent Skills open standard (agentskills.io)
+- Bundled skills included in every session: /simplify, /batch, /debug, /loop, /claude-api
 - SKILL.md is required entry point; directory name becomes skill name for invocation
 - description is recommended (not required) so Claude knows when to use the skill
 - name field is optional; if omitted, uses directory name (lowercase, alphanumeric, hyphen, max 64 characters)
@@ -49,7 +50,11 @@
 - Skill vs Hook: instructions vs deterministic lifecycle automation
 - Plugin skill namespace prevents collisions with project/personal skills
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
+- skillListingBudgetFraction setting adjusts budget for skill descriptions (e.g., 0.02 = 2% of context window)
+- maxSkillDescriptionChars setting controls character cap per skill description (default 1,536)
 - /skills command shows available skills with visibility status
+- Model can discover and invoke skills programmatically via Skill tool, subject to permission rules
+- Skill tool access can be denied or restricted via permission rules in settings
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
 
 ## Recommended
