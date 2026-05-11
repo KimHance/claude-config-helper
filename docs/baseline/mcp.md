@@ -9,11 +9,12 @@
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
 - MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
-- Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
+- Three install scopes: `local` (default, single project, private, stored in `~/.claude.json` at the project path), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
-- The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
+- The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry; flags servers that advertise tools but expose no tools
 - The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
 - The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
+- In JSON configs, `type: "streamable-http"` is an alias for `http` (the MCP specification uses the name `streamable-http` for this transport)
 
 ## Advanced
 - `claude mcp add --transport http <name> <url>` adds a remote HTTP server; supports `--header "K: V"` (repeatable), `--scope`, `--callback-port`, `--client-id`, `--client-secret`
@@ -55,6 +56,7 @@
 - Tool Search defers MCP tool definitions until needed; controlled by `ENABLE_TOOL_SEARCH` (`true`/`auto`/`auto:<N>`/`false`/unset)
 - Tool Search requires Sonnet 4 / Opus 4 or later (Haiku unsupported); auto-disabled on Vertex AI and non-first-party `ANTHROPIC_BASE_URL`
 - Per-server opt-out from Tool Search deferral: set `alwaysLoad: true` on that server (v2.1.121+); per-tool opt-out via `_meta["anthropic/alwaysLoad"]: true`
+- Setting `alwaysLoad: true` blocks startup until the server connects, capped at the standard 5-second connect timeout; applies even when `MCP_CONNECTION_NONBLOCKING=1` is set
 - MCP prompts surface as `/mcp__<server>__<prompt>` slash commands; arguments are parsed per the prompt's parameter schema
 - MCP resources are referenced via `@<server>:<protocol>://<path>` in prompts; auto-fetched and attached
 - MCP elicitation requests pop up form-mode or URL-mode dialogs; auto-respond via `Elicitation` hook

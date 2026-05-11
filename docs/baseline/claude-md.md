@@ -5,6 +5,8 @@
 > Update granularity = a single section (one `##` heading). If the meaning is unchanged, the section is left byte-for-byte intact — no rewording, no reordering.
 
 ## Fundamentals
+Claude Code has two complementary memory systems: CLAUDE.md files (you write) and auto memory (Claude writes). Both load at session start.
+- Auto memory lets Claude write notes for itself based on corrections and preferences; Claude decides what's worth remembering automatically. Auto memory requires Claude Code v2.1.59 or later.
 - `CLAUDE.md` is a markdown file that gives Claude persistent instructions for a project, the user, or the organization
 - CLAUDE.md is loaded into the context window at the start of every session as a user message after the system prompt
 - It is treated as context, not enforced configuration — Claude reads it and tries to follow it but compliance is not guaranteed
@@ -14,7 +16,7 @@
 - Files in subdirectories below cwd are NOT loaded at launch — they load on demand when Claude reads files in those subdirectories
 - `/init` generates a starting CLAUDE.md by analyzing the codebase; if a file already exists it suggests improvements rather than overwriting
 - `CLAUDE_CODE_NEW_INIT=1` enables an interactive multi-phase `/init` flow that proposes CLAUDE.md, skills, and hooks together
-- `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files
+- `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files; allows toggling auto memory on/off and browsing auto memory files
 
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
@@ -45,6 +47,8 @@
 - `InstructionsLoaded` hook fires when CLAUDE.md or rules files load; useful for auditing exactly which instruction files are loaded and why
 - `--append-system-prompt` flag injects instructions at the system prompt level (must be passed every invocation; suited for scripts/automation)
 - Settings vs CLAUDE.md responsibility split: technical enforcement (permissions deny / sandbox / env / forceLogin) goes in managed settings, behavioral guidance goes in CLAUDE.md
+- Auto memory is disabled via `autoMemoryEnabled: false` in project settings or `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` env var; on by default
+- Auto memory directory can be customized via `autoMemoryDirectory` in user settings (absolute path or `~/...` only); defaults to `~/.claude/projects/<project>/memory/`
 
 ## Recommended
 - Add to CLAUDE.md when: Claude makes the same mistake twice / a code review catches something Claude should have known / you keep typing the same correction across sessions / a new teammate would need that same context

@@ -28,6 +28,7 @@
 - `memory: user` stores at `~/.claude/agent-memory/<name>/`, `memory: project` at `.claude/agent-memory/<name>/`, `memory: local` at `.claude/agent-memory-local/<name>/`
 - When `memory` is enabled, the subagent's prompt includes the first 200 lines or 25KB of `MEMORY.md`, and Read/Write/Edit tools are auto-enabled
 - `isolation: worktree` runs the subagent in a temporary git worktree; the worktree is auto-cleaned if the subagent makes no changes
+- `worktree.baseRef` setting (`fresh` | `head`) controls whether worktrees branch from `origin/<default>` (fresh, default) or local `HEAD`; applies to `--worktree`, `EnterWorktree`, and agent-isolation worktrees
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript

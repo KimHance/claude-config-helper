@@ -42,6 +42,9 @@
 - Skill content lifecycle: single message at invocation, persists until session end
 - Auto-compaction: 25k combined budget, 5k per skill preserved, older skills dropped
 - Skill descriptions truncated at 1,536 chars (description + when_to_use combined)
+- maxSkillDescriptionChars setting (default 1,536) controls per-skill character cap on combined description and when_to_use text
+- skillListingBudgetFraction setting (default 0.01) controls fraction of context window reserved for skill listing; descriptions collapse when overflowing
+- Run /doctor to diagnose skill description truncation and see which skills are affected by budget overflow
 - Skill vs Command: same /name behavior, skills add supporting files and invocation control
 - Skill vs CLAUDE.md: task-specific vs always-on knowledge
 - Skill vs Subagent: instructions vs separate context
