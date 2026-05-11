@@ -6,7 +6,6 @@ Review and generate Claude Code configuration files (CLAUDE.md, skills, agents, 
 
 - Claude config **review** tasks → `reviewer` subagent
 - Claude config **generation/scaffolding** tasks → `generator` subagent
-- Claude config **full setup** (generate + review + benchmark) → `gn-rv` (generate-and-review) skill
 - Benchmark **eval grading** (internal, spawned by reviewer) → `grader` subagent
 - Benchmark **eval execution** (internal, spawned by reviewer in pairs) → `eval-runner` subagent
 - Weekly cron **self-review** (internal, U5 step) → `self-eval-runner` subagent (thin executor)

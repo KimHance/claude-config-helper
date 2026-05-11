@@ -39,16 +39,6 @@ Analyzes the project's tech stack and scaffolds Claude config files from templat
 - Skills / agents / commands scaffolding
 - Hooks, settings, MCP configuration
 
-### Generate + Review + Benchmark (`/cchelp:gn-rv`)
-
-End-to-end orchestration workflow:
-
-1. **Generate** — Scaffold config files via `generator`
-2. **Snapshot** — Copy originals for baseline comparison (if updating)
-3. **Review + Benchmark** — Audit via `reviewer` with parallel eval (with-skill vs baseline)
-4. **Iterate** — User-driven feedback loop until satisfied
-5. **Description Optimize** — Optional trigger accuracy tuning
-
 ## How review works (in-memory pipeline)
 
 `/cchelp:review` runs a 5-step orchestration in the **main session** (not as a subagent — Claude Code disallows subagent-spawning-subagents).
@@ -124,7 +114,6 @@ Same review code drives both `/cchelp:review` (user) and JOB 2 (workflow self-au
 ```
 Review my claude config
 Set up claude config for this project
-Generate and review claude config
 ```
 
 ### Slash Commands
@@ -132,7 +121,6 @@ Generate and review claude config
 ```
 /cchelp:review    # Review config files
 /cchelp:generate  # Generate config files
-/cchelp:gn-rv     # Generate + review in one step
 ```
 
 ## Installation
@@ -173,12 +161,10 @@ cchelp/
 │   └── self-eval-runner.md     # Cron pipeline U5 thin executor (haiku)
 ├── skills/
 │   ├── review/                 # Review skill (rules in docs/baseline/)
-│   ├── generate/               # Generation templates (8 types)
-│   └── gn-rv/                  # Generate + Review + Benchmark orchestration
+│   └── generate/               # Generation templates (8 types)
 ├── commands/
 │   ├── review.md               # /cchelp:review (in-memory orchestration)
-│   ├── generate.md             # /cchelp:generate
-│   └── gn-rv.md                # /cchelp:gn-rv
+│   └── generate.md             # /cchelp:generate
 ├── docs/
 │   └── baseline/               # Single rule source (synced from official docs)
 │       ├── claude-md.md
@@ -203,7 +189,7 @@ The plugin reviews itself end-to-end with the in-memory pipeline (18 eval-runner
 | Category | Grade | Issues | Benchmark (avg) |
 |----------|-------|--------|-----------------|
 | CLAUDE.md | A | 0 | - |
-| Skills | A- | 1 | with-skill +15pp / gn-rv -5pp ⚠ |
+| Skills | A- | 1 | with-skill +15pp avg |
 | Subagents | A- | 2 | with-skill +29pp pass-rate vs baseline |
 | Commands | A | 0 | - |
 | Memory / Hooks / MCP | N/A | - | - |
@@ -214,7 +200,6 @@ The plugin reviews itself end-to-end with the in-memory pipeline (18 eval-runner
 |---|---|---|---|
 | review | 0.90 / 0.75 | 28K / 21K | +32% |
 | generate | 0.85 / 0.70 | 20K / 19K | +4% |
-| gn-rv | 0.70 / 0.75 ⚠ | 38K / 19K | +100% |
 | reviewer | 0.92 / 0.45 | 36K / 20K | +79% |
 | generator | 0.90 / 0.60 | 30K / 19K | +59% |
 | grader | 0.87 / 0.86 | 27K / 20K | +35% |
@@ -222,7 +207,7 @@ The plugin reviews itself end-to-end with the in-memory pipeline (18 eval-runner
 | plan-reviewer | 0.92 / 0.78 | 26K / 19K | +38% |
 | self-eval-runner | 1.00 / 0.30 | 28K / 18K | +51% |
 
-> Quality wins are systemic (+15–70pp), but every skill costs more tokens than baseline. The trade-off is intentional — skills inject structured rules that produce better, more consistent output at higher per-call cost. `gn-rv` is the one outlier: quality regressed below baseline; trim and re-eval.
+> Quality wins are systemic (+15–70pp), but every skill costs more tokens than baseline. The trade-off is intentional — skills inject structured rules that produce better, more consistent output at higher per-call cost.
 
 **Overall: A-**
 

@@ -39,7 +39,7 @@ Queries that should NOT activate the skill/agent. Focus on **near-misses**:
 7. **Read-only** — Just wants to see a file, not review it (e.g., "show me CLAUDE.md")
 8. **Meta** — Asking about the tool itself (e.g., "what does the reviewer agent do?")
 9. **Tricky near-miss** — Very close but subtly wrong scope
-10. **Different workflow** — Needs gn-rv, not standalone review
+10. **Different workflow** — Needs generation, not standalone review
 
 ## Optimization Process
 
