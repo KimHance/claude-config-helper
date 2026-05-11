@@ -45,6 +45,8 @@
 - `InstructionsLoaded` hook fires when CLAUDE.md or rules files load; useful for auditing exactly which instruction files are loaded and why
 - `--append-system-prompt` flag injects instructions at the system prompt level (must be passed every invocation; suited for scripts/automation)
 - Settings vs CLAUDE.md responsibility split: technical enforcement (permissions deny / sandbox / env / forceLogin) goes in managed settings, behavioral guidance goes in CLAUDE.md
+- `CLAUDE_CODE_DISABLE_AUTO_MEMORY` env var: set to `1` to disable auto memory creation and loading; set to `0` to force auto memory on even when `--bare` or `autoMemoryEnabled: false` would disable it
+- `CLAUDE_CODE_DISABLE_CLAUDE_MDS` env var: set to `1` to prevent loading any CLAUDE.md files (user, project, and auto-memory) into context
 
 ## Recommended
 - Add to CLAUDE.md when: Claude makes the same mistake twice / a code review catches something Claude should have known / you keep typing the same correction across sessions / a new teammate would need that same context

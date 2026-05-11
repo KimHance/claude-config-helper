@@ -21,6 +21,7 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- Claude can invoke built-in skills /init, /review, /security-review via Skill tool for programmatic skill invocation
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
@@ -51,6 +52,8 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- maxSkillDescriptionChars setting controls per-skill description length cap (default 1,536 characters)
+- skillListingBudgetFraction setting reserves context for skill listing Claude sees each turn (default 0.01 = 1%)
 
 ## Recommended
 - description should put key use case first to fit within character budget
