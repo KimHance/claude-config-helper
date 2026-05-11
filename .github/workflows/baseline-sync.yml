@@ -448,12 +448,48 @@ jobs:
               - block : a baseline section body is empty / corrupted /
                         replaced with garbage. (rare)
 
-            STEP 4 — Decide bump level (exactly one):
-              - patch : only formatting / typo / example tweaks. No new facts.
-              - minor : at least one new fact added; no existing fact removed
-                        or contradicted.
-              - major : at least one existing fact removed/contradicted, or
-                        a deprecation/behavior change.
+            STEP 4 — Decide bump level (CONSERVATIVE — default patch).
+
+              The default is `patch`. Most baseline-sync runs should be
+              `patch`. Only escalate to `minor` or `major` when the
+              specific criteria below are clearly met.
+
+              - patch (DEFAULT for any baseline sync change):
+                  - Any wording clarification or expansion
+                  - Adding sub-options to an already-documented enumeration
+                    (e.g., "the X setting accepts on/off" → "X accepts
+                    on/off/auto" — the X setting itself was already listed)
+                  - Adding additional descriptive detail to an already-
+                    mentioned feature
+                  - A small number (1-2) of new minor mentions that do
+                    not introduce a brand-new configurable surface
+
+              - minor (escalate only when BOTH apply):
+                  (a) ≥3 DISTINCT new CONFIGURABLE SURFACES added across
+                      categories — meaning new symbols that users would
+                      configure: CLI flags (--foo), env vars (UPPER_SNAKE),
+                      setting keys (a.b.c), hook event names, new agent
+                      types, or new tool names. Cosmetic / descriptive
+                      additions to existing surfaces do NOT count.
+                  (b) The new surfaces enable a user workflow that was
+                      previously not possible (not just better-documented).
+
+                  If only (a) is true (≥3 surfaces but minor capability
+                  shift) → stay patch.
+
+              - major (escalate only when ONE of these applies):
+                  - An existing documented fact is REMOVED (deletion)
+                    AND the C8 cross-check trio confirms the fact is
+                    absent from official docs. If C8 finds the fact still
+                    exists, do NOT escalate to major.
+                  - A documented behavior is CONTRADICTED by new docs
+                    (not just clarified).
+                  - A deprecation notice is added for an established
+                    feature that users currently rely on.
+
+              Bias toward patch. When in doubt between two levels, choose
+              the LOWER one. Users prefer slow, predictable version
+              progression over frequent minor bumps.
 
             STEP 5 — Write two files:
 
