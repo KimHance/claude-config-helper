@@ -337,6 +337,7 @@ jobs:
       bench_present: ${{ steps.bench_meta.outputs.present }}
       bench_q_susp: ${{ steps.bench_meta.outputs.q_susp }}
       bench_e_susp: ${{ steps.bench_meta.outputs.e_susp }}
+      suspicion_count: ${{ steps.meta.outputs.suspicion_count }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -522,11 +523,15 @@ jobs:
         run: |
           echo "new_version=$(cat /tmp/new_version)" >> $GITHUB_OUTPUT
 
-      - name: meta (parse verdict from review-summary.md)
+      - name: meta (parse verdict + suspicion count from review-summary.md)
         id: meta
         run: |
           VERDICT=$(grep -E '^verdict: ' /tmp/review-summary.md | head -1 | awk '{print $2}' || echo "pass")
+          # Count SUSPICIOUS occurrences in the review summary — covers C1-C9
+          # findings. Used to escalate to low-confidence label when > 0.
+          SUSPICION_COUNT=$(grep -c "SUSPICIOUS" /tmp/review-summary.md || true)
           echo "verdict=$VERDICT" >> $GITHUB_OUTPUT
+          echo "suspicion_count=$SUSPICION_COUNT" >> $GITHUB_OUTPUT
 
       - name: select-bench-targets
         id: bench-pick
@@ -798,6 +803,7 @@ jobs:
           echo "bench_present=$(jq -r .bench_present $J2/bench-summary.json)" >> $GITHUB_OUTPUT
           echo "bench_q_susp=$(jq -r .bench_quality_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
           echo "bench_e_susp=$(jq -r .bench_efficiency_suspicious $J2/bench-summary.json)" >> $GITHUB_OUTPUT
+          echo "suspicion_count=$(grep -c 'SUSPICIOUS' $J2/review-summary.md || true)" >> $GITHUB_OUTPUT
 
       - name: assemble values.json
         env:
@@ -945,15 +951,18 @@ jobs:
           BUMP_WARNING: ${{ steps.meta.outputs.bump_warning }}
           BENCH_Q: ${{ steps.meta.outputs.bench_q_susp }}
           BENCH_E: ${{ steps.meta.outputs.bench_e_susp }}
+          SUSPICION_COUNT: ${{ steps.meta.outputs.suspicion_count }}
           CHANGED_CATS: ${{ needs.sync-and-commit.outputs.changed_categories }}
         run: |
           # 의미 기반 라벨만 사용. 기존 repo 라벨 (automated, criteria-update,
           # routine-update, mass-update, high-impact, low-confidence) 만 부착.
           # criteria-update 는 auto-release.yml 의 원래 트리거와 호환을 위함.
           LABELS='["automated", "criteria-update"]'
-          # 의심 신호 우선 — low-confidence
+          # 의심 신호 우선 — low-confidence. C6/C7/C9 SUSPICIOUS 카운트도 포함
+          # (suspicion_count > 0 이면 self-review 가 의심 잡았다는 뜻).
           if [ "$VERDICT" != "pass" ] || [ "$BUMP_WARNING" = "true" ] || \
-             [ "$BENCH_Q" = "true" ] || [ "$BENCH_E" = "true" ]; then
+             [ "$BENCH_Q" = "true" ] || [ "$BENCH_E" = "true" ] || \
+             [ "${SUSPICION_COUNT:-0}" -gt 0 ]; then
             LABELS=$(jq -c '. + ["low-confidence"]' <<< "$LABELS")
           fi
           # 영향도
