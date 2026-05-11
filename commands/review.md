@@ -16,14 +16,51 @@ The benchmark step MUST run in the main session because subagents cannot spawn f
 
 ## Steps
 
+### 0. Progress tracking (MANDATORY)
+
+Before Step 1, call `TaskCreate` to register the progress checkboxes the user will see in the UI. Create tasks with emoji-prefixed subjects.
+
+**For Total mode** (all skills + agents), create 8 tasks in this order:
+
+```
+📋 Discover targets (skills + agents)
+🚀 Bench skills — eval-runner × N parallel
+⚖️ Grade skills — grader × M
+🚀 Bench agents — eval-runner × N parallel
+⚖️ Grade agents — grader × M
+🔍 Audit — reviewer subagent
+🛡️ Verify (bench_data non-empty)
+📊 Read report + print summary
+```
+
+**For Target mode** (single path), create 5 tasks:
+
+```
+📋 Discover target
+🚀 Bench target — eval-runner × 2 (or skip if non-skill/agent)
+⚖️ Grade target — grader × 1 (or skip)
+🔍 Audit — reviewer subagent
+📊 Read report + print summary
+```
+
+Set each task's `activeForm` to a present-continuous form (e.g., "📋 Discovering targets") so the spinner shows it nicely when in_progress.
+
+At the START of each subsequent Step (1, 2, 3, …), call `TaskUpdate(status=in_progress)` on the corresponding task. At the END, call `TaskUpdate(status=completed)`. The user sees a live checklist with checkboxes ticking off.
+
+If any step fails (e.g., agent unavailable, C8 detects invalid deletion), leave that task `in_progress` and add a follow-up task explaining the failure rather than marking complete.
+
 ### 1. Discover targets
+
+Mark task "📋 Discover ..." as `in_progress` at the start, then `completed` at the end.
 
 - **Total mode**: `Glob skills/**/SKILL.md`, `Glob agents/*.md`
 - **Target mode**: only the path passed as argument; classify as skill / agent / command / other
 
 ### 2. Run benchmarks (parallel, in-memory) — MANDATORY when targets exist
 
-Do NOT skip this step. If Step 1 returned any targets (skills or agents), you MUST dispatch eval-runners + graders before proceeding to Step 3. Step 3's reviewer needs `bench_data` from this step.
+Mark task "🚀 Bench ..." as `in_progress` before dispatch, `completed` after all eval-runners return. Mark task "⚖️ Grade ..." as `in_progress` before dispatching graders, `completed` after grading dicts collected.
+
+Do NOT skip Step 2. If Step 1 returned any targets (skills or agents), you MUST dispatch eval-runners + graders before proceeding to Step 3. Step 3's reviewer needs `bench_data` from this step.
 
 Skip is acceptable ONLY when:
 - Step 1 returned 0 targets, OR
@@ -51,6 +88,8 @@ If the `Agent` tool is unavailable or any subagent fails, set `bench_available=f
 
 ### 3. Run audit (reviewer subagent)
 
+Mark task "🔍 Audit ..." as `in_progress` before dispatch, `completed` after reviewer returns.
+
 Dispatch the `cchelp:reviewer` subagent with:
 - mode: `total` or `target`
 - target_path: (only in target mode)
@@ -63,6 +102,8 @@ The reviewer will:
 
 ### 4. Pre-output verification (MANDATORY)
 
+Mark task "🛡️ Verify ..." as `in_progress`. If passes, `completed`. If fails, leave `in_progress` and surface the gap.
+
 Before reading the report, verify:
 - If Step 1 returned targets, `bench_data` MUST be a non-empty list of grading dicts.
 - If `bench_data` is empty despite targets existing, you skipped Step 2 — go back and dispatch the missing graders before continuing.
@@ -70,6 +111,8 @@ Before reading the report, verify:
 The Benchmark column in the summary table should NEVER show "N/A" when targets exist; it must contain real `score` / `tokens` numbers.
 
 ### 5. Output to terminal
+
+Mark task "📊 Read report ..." as `in_progress` before reading, `completed` after printing.
 
 After the reviewer returns, **read `docs/claude-config-review-report.md` directly** and output:
 1. Summary table (with Benchmark column populated, not N/A)
