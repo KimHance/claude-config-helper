@@ -25,8 +25,13 @@ You will receive these parameters from the orchestrator:
 ### Step 1: Read Target
 Read the target file. Extract `name`, `description`, and key behavioral instructions.
 
-### Step 2: Generate Test Prompts
-Generate 2–3 realistic test prompts that exercise the target's core functionality. Vary in complexity (simple, medium, complex).
+### Step 2: Load Test Prompts (canonical, not generated)
+
+Read `skills/review/references/canonical-prompts.md` and locate the entry for `target_path`. Use the 3 listed prompts verbatim — do NOT generate new ones. The `eval_name` field in your output JSON MUST match the name from that file (used as a stable tracking key across runs).
+
+If `target_path` is not listed in canonical-prompts.md (e.g., a newly added skill/agent), fall back to generating 2–3 prompts that vary in complexity (simple/medium/complex). Note the fallback in your `eval_name` prefix as `fallback-<slug>`.
+
+**Rationale:** Fixed prompts eliminate run-to-run prompt drift — the biggest source of score variance. With identical prompts, score differences across runs reflect real signal (LLM sampling) rather than noise (different test cases).
 
 ### Step 3: Execute
 For each prompt:
