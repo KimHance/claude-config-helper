@@ -403,7 +403,9 @@ jobs:
 
             STEP 1 — Read /tmp/review-input.md.
 
-            STEP 2 — Sanity audit per changed category. Apply these 4 checks:
+            STEP 2 — Sanity audit per changed category. Apply these 8 checks
+            (C8 is run separately as cross-check-deletions; not here):
+
               C1 Synonym/format swap only? — diff replaces words with synonyms,
                  reorders sentences, or converts bullets <-> prose without
                  adding/removing facts. SUSPICIOUS if yes.
@@ -415,11 +417,29 @@ jobs:
                  more than half by line count, AND the removed lines were
                  substantive (not just a single bullet trim). SUSPICIOUS if
                  yes.
-              C4 reason-evidence mismatch? — the JSON `reason` text does not
-                 match what the diff actually shows (e.g., reason says "added
-                 X" but X is not in the diff). SUSPICIOUS if yes.
+              C4 reason → diff (forward): each fact mentioned in reason
+                 actually appears in the diff (e.g., reason says "added X"
+                 and X is present in diff). SUSPICIOUS if a reason claim is
+                 absent from diff.
               C5 Source URL present? — every changed section has at least one
                  entry in `sources`. MISSING URL is SUSPICIOUS.
+
+              C6 diff → reason (REVERSE): for each substantive change in the
+                 diff (new line, removed line, new identifier), is it
+                 mentioned in reason? SUSPICIOUS if a diff change is
+                 UNCOVERED by reason.
+              C7 fake-new check: for each "vN.M.Z: X added" or
+                 "doc page: X added" claim in reason, grep the BEFORE
+                 section content (visible in review-input.md diff context)
+                 for X. If X already present in BEFORE → SUSPICIOUS: claim
+                 is fake new (the fact already existed in baseline).
+              C9 wording-only detector: check the diff for new tokens NOT
+                 in BEFORE — identifiers (snake_case, camelCase, kebab-case),
+                 CLI flags (--foo), env vars (UPPER_SNAKE), version numbers
+                 (vN.M.Z), numeric quantities. If diff has NONE of these
+                 AND only word-level rewording / reordering / prose↔bullet
+                 conversion → SUSPICIOUS: wording-only change, should be
+                 changed:false.
 
             STEP 3 — Decide verdict (exactly one):
               - pass  : zero suspicious checks across all categories.
@@ -444,8 +464,11 @@ jobs:
                   | C1 Synonym/format swap | OK / SUSPICIOUS: <why> | ... |
                   | C2 SDK intrusion | OK / SUSPICIOUS: <why> | ... |
                   | C3 Section deletion >50% | OK / SUSPICIOUS: <why> | ... |
-                  | C4 reason-evidence mismatch | OK / SUSPICIOUS: <why> | ... |
+                  | C4 reason→diff (forward) | OK / SUSPICIOUS: <why> | ... |
                   | C5 source URL present | OK / SUSPICIOUS: <why> | ... |
+                  | C6 diff→reason (reverse) | OK / SUSPICIOUS: <why> | ... |
+                  | C7 fake-new check | OK / SUSPICIOUS: <why> | ... |
+                  | C9 wording-only | OK / SUSPICIOUS: <why> | ... |
 
                   ## Per-category notes
                   - **<cat>**: one sentence summary of what the diff actually
