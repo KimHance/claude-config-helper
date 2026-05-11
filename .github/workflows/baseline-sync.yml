@@ -606,6 +606,90 @@ jobs:
 
             6) Output exactly: `BENCH DONE: <N> targets`
 
+      - name: extract-deletions
+        id: deletions
+        run: |
+          PYTHONPATH=cron cron/.venv/bin/python -m scripts.parse_deletion_facts \
+            ${{ steps.paths.outputs.summary }} \
+            ${{ steps.paths.outputs.reports }} \
+            ${{ steps.paths.outputs.diff }} > /tmp/deletions.json
+          COUNT=$(jq length /tmp/deletions.json)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Found $COUNT deletion candidates"
+          cat /tmp/deletions.json
+
+      - name: cross-check-deletions (C8)
+        if: steps.deletions.outputs.count != '0'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: |
+            --permission-mode bypassPermissions
+            --allowed-tools Bash,Read,Write,Task,WebFetch
+          prompt: |
+            You are the deletion cross-check coordinator for baseline-sync.
+
+            Input: /tmp/deletions.json — array of {category, deleted_line} entries.
+
+            For EACH deletion entry, spawn THREE Task subagents in PARALLEL
+            (subagent_type=`claude-code-guide`), one per docs page:
+
+              Subagent A: WebFetch https://code.claude.com/docs/en/permissions
+                Search the page body (case-insensitive substring) for the key
+                noun or identifier mentioned in `deleted_line`. Return JSON:
+                `{found: bool, evidence: "<verbatim quote or null>"}`.
+
+              Subagent B: WebFetch https://code.claude.com/docs/en/settings
+                Same — search for the key noun. (Many settings-related facts
+                that are absent from /permissions actually live here.)
+
+              Subagent C: WebFetch https://code.claude.com/docs/en/changelog
+                Search for a deprecation/removal notice for the deleted noun.
+                Return `{found_deprecation: bool, evidence: "..."}`.
+
+            Aggregate: a deletion is VALID only if:
+              - Subagent A found:false AND
+              - Subagent B found:false AND
+              - Subagent C found_deprecation:true OR found_deprecation:false
+                with no contradicting info.
+
+            If ANY of A/B return found:true → the deletion is INVALID
+            (the fact exists in docs; deletion is hallucination).
+
+            Write `/tmp/cross-check.json` as a JSON array:
+            [
+              {
+                "category": "<cat>",
+                "deleted_line": "<line>",
+                "valid": <bool>,
+                "evidence": {
+                  "permissions_page": "...",
+                  "settings_page": "...",
+                  "changelog": "..."
+                }
+              }
+            ]
+
+            Output exactly one final line: `CROSS-CHECK DONE: <invalid>/<total> invalid deletions`
+
+      - name: integrate-cross-check
+        if: steps.deletions.outputs.count != '0'
+        run: |
+          if [ -f /tmp/cross-check.json ]; then
+            INVALID=$(jq '[.[] | select(.valid == false)] | length' /tmp/cross-check.json)
+            TOTAL=$(jq length /tmp/cross-check.json)
+            echo "C8 result: $INVALID of $TOTAL deletions INVALID"
+            if [ "$INVALID" -gt 0 ]; then
+              tmp=$(mktemp)
+              jq --arg note "C8 detected $INVALID invalid deletion(s) — cross-check trio found the fact in docs" \
+                '.bump_warning = true | .validation_notes = ((.validation_notes // "") + " | " + $note)' \
+                /tmp/bump.json > "$tmp" && mv "$tmp" /tmp/bump.json
+              echo "::warning ::$INVALID invalid deletion(s) detected by C8 cross-check trio"
+            fi
+          else
+            echo "::warning ::cross-check.json missing — C8 did not write output"
+          fi
+
       - name: format-bench-results
         run: |
           if [ -f /tmp/bench/_gradings.json ]; then
