@@ -23,6 +23,7 @@
 - `permissionMode` values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`
 - `permissionMode` is ignored for plugin subagents (security)
 - `mcpServers` and `hooks` frontmatter are also ignored for plugin subagents (security)
+- When an agent runs as the main session via `--agent` or the `agent` setting, its `permissionMode` is honored (v2.1.119+)
 - `skills` injects full skill content into subagent context at startup; subagents do not inherit skills from parent
 - Skills with `disable-model-invocation: true` cannot be preloaded into subagents
 - `memory: user` stores at `~/.claude/agent-memory/<name>/`, `memory: project` at `.claude/agent-memory/<name>/`, `memory: local` at `.claude/agent-memory-local/<name>/`

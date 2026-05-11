@@ -79,7 +79,6 @@
 - Do not use `bypassPermissions` outside of isolated containers / VMs — it bypasses prompts on writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`
 - Do not assume PowerShell aliases must be spelled exactly — they are canonicalized (case-insensitive); `Get-ChildItem`, `gci`, `ls`, `dir` all match the same rule
 - Do not assume `WebFetch(domain:x)` blocks Bash from reaching that domain — Bash `curl`/`wget` is unaffected
-- Do not place project-scope `permissions.skipDangerousModePermissionPrompt` — silently ignored from project settings (security)
 - Do not assume `--allowedTools` / `--disallowedTools` overrides managed deny — managed always wins
 - Do not assume `permissions.allow` overrides higher-tier deny — deny at any tier wins
 - Do not use `Bash(ls*)` (no space) when you mean `Bash(ls *)` — the no-space form also matches `lsof` and other prefix-collisions

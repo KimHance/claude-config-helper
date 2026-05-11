@@ -94,7 +94,7 @@
 - `/theme` — change color theme; supports `auto`, light/dark, daltonized, ANSI, custom themes from `~/.claude/themes/` or plugins
 - `/tui [default|fullscreen]` — set terminal UI renderer
 - `/ultraplan <prompt>` — draft plan in ultraplan cloud session, review in browser
-- `/ultrareview [PR]` — deep multi-agent cloud review (Pro/Max free runs through 2026-05-05, then extra usage)
+- `/ultrareview [PR]` — deep multi-agent cloud review (3 free runs on Pro and Max through 2026-05-05, then extra usage)
 - `/upgrade` — open upgrade page
 - `/usage` — show session cost, plan limits, activity stats
 - `/vim` — **Removed in v2.1.92**; toggle Vim editor mode via `/config → Editor mode`

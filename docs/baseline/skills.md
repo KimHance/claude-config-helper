@@ -48,7 +48,7 @@
 - Skill+context:fork vs subagent: delegate in skill vs define subagent separately
 - Skill vs Hook: instructions vs deterministic lifecycle automation
 - Plugin skill namespace prevents collisions with project/personal skills
-- skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
+- skillOverrides setting controls visibility with options: on (full listing), name-only (name without description), user-invocable-only (hidden from model, in / menu), off (hidden everywhere)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
 
