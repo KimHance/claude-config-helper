@@ -112,6 +112,37 @@ jobs:
                  If an adjacent page contains an SDK section, ignore that
                  section. Only extract Claude Code (CLI) facts.
 
+               STEP 2.5 — BASELINE CHECK before claiming "new"
+                 Before writing a reason like "vX.Y.Z added FOO" or
+                 "doc page: FOO":
+                   1. grep the EXISTING baseline section body (from STEP 1)
+                      for substring matching FOO (case-insensitive).
+                   2. If FOO (or close paraphrase) is already present in
+                      the existing baseline -> DO NOT claim as new. Drop
+                      FOO from new_body, drop the claim from reason.
+                   3. Only a fact that is BOTH in docs AND ABSENT from
+                      the existing baseline qualifies as "new".
+                   4. When writing new_body, the NEW addition must be
+                      visually identifiable: a line/bullet/phrase that
+                      did NOT exist in BEFORE.
+
+               STEP 2.6 — DELETION REQUIRES TRIPLE CHECK
+                 Before proposing to REMOVE any existing baseline fact:
+                   1. The category's main page was already fetched in
+                      STEP 2(a).
+                   2. ADDITIONALLY fetch:
+                      - https://code.claude.com/docs/en/settings
+                        (settings-related anti-patterns often live here,
+                        e.g., skipDangerousModePermissionPrompt is a
+                        settings key, not a permissions key)
+                      - changelog (already fetched in STEP 2(b)) — check
+                        for deprecation notice.
+                   3. Only if absent from ALL THREE pages AND no
+                      deprecation notice exists -> propose deletion.
+                      Single-page absence is INSUFFICIENT.
+                   4. If proposing deletion, the reason MUST cite all 3
+                      sources checked and the substring searched.
+
                STEP 3 — DECISION TREE per section.
                  For each of the 4 sections (Fundamentals, Advanced,
                  Recommended, Anti-patterns), apply this tree IN ORDER and
@@ -139,6 +170,36 @@ jobs:
                      as changed: false.
                    - When uncertain, choose changed: false. Speculation is
                      forbidden.
+
+                 DEFAULT ACTION IS ALWAYS `changed: false`.
+
+                 `changed: true` requires ALL of:
+                   (a) reason cites at least one specific new noun/symbol/
+                       CLI flag/env var not in BEFORE baseline
+                       (verified by STEP 2.5).
+                   (b) source URL points to a page where that noun is
+                       documented.
+                   (c) self-check (STEP 3.5 below) confirms the noun
+                       appears in diff(new_body, BEFORE).
+
+                 If ANY of (a)(b)(c) fails -> set `changed: false`.
+                 No exceptions.
+
+               STEP 3.5 — DIFF-REASON SELF-CHECK (before WRITE)
+                 After drafting new_body and reason:
+                   1. Compute byte-level diff: BEFORE section body vs
+                      new_body.
+                   2. For each fact mentioned in reason, verify it appears
+                      in the diff (the NEW content added by this change).
+                      Case-insensitive substring match is OK.
+                   3. If reason claims "X added" but diff does NOT contain
+                      X -> reason is hallucinated. Either remove that claim
+                      from reason OR set `changed: false` for this section.
+                   4. If diff contains a substantial change (new line,
+                      removed line, new identifier) NOT mentioned in
+                      reason -> reason is incomplete. Add an entry to
+                      reason OR revert that change from new_body.
+                   5. This step is MANDATORY. Do not skip.
 
                STEP 4 — REASON FORMAT (when changed: true only).
                  reason MUST follow this shape:
