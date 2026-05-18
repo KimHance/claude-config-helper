@@ -51,6 +51,10 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- Hooks: PostToolUse and PostToolUseFailure inputs include duration_ms (tool execution time, excluding permission prompts and PreToolUse hooks)
+- Hooks receive active effort level via effort.level JSON input field and $CLAUDE_EFFORT environment variable
+- Skill tool can invoke built-in slash commands: /init, /review, /security-review
+- Plugins with a root-level SKILL.md and no skills/ subdirectory are surfaced as a skill
 
 ## Recommended
 - description should put key use case first to fit within character budget

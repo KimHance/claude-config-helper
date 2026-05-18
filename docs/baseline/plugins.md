@@ -16,6 +16,7 @@
 - The `enabledPlugins` settings key (`{"<plugin>@<marketplace>": true|false}`) is what actually turns plugins on/off; can live in user, project, local, or managed settings
 - Local copy via `--plugin-dir` takes precedence over an installed plugin of the same name for that session, except when force-enabled in managed settings
 - `--plugin-dir` accepts both directories and `.zip` plugin archives
+- Plugins can declare a root-level `SKILL.md` file (without a `skills/` subdirectory) to define a single skill surfaced under the plugin namespace
 
 ## Advanced
 - Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings)
@@ -36,6 +37,9 @@
 - LSP servers in `.lsp.json` give Claude real-time code intelligence (per-language `command`, `args`, `extensionToLanguage` map); user must have the language server binary installed locally
 - Monitors in `monitors/monitors.json` watch logs/files/external status and push notifications to Claude during the session; each entry has `name`, `command`, optional `description`, `when` trigger
 - `bin/` directory: executables placed here are added to Bash tool's `PATH` while the plugin is enabled
+- Hooks can include an `args` field (array of strings) to spawn commands in exec form without shell interpretation (v2.1.141)
+- `PostToolUse` hooks support a `continueOnBlock` config option to continue processing even when tool use is blocked (v2.1.141)
+- Plugin MCP stdio servers receive `CLAUDE_PROJECT_DIR` in their environment (v2.1.141)
 - Marketplace concept: a registry that lists installable plugins; users add a marketplace then install plugins from it
 - `extraKnownMarketplaces` settings key adds marketplace sources; sources are `github` (`{source: "github", repo: "owner/repo"}`), `git` (`{source: "git", url: "..."}`), `directory` (`{source: "directory", path: "/local/path"}` for development), `hostPattern` (`{source: "hostPattern", hostPattern: "regex"}`), or `settings` (`{source: "settings", name: "...", plugins: [...]}`)
 - Managed-only plugin policies: `strictKnownMarketplaces` (allowlist of marketplace sources, enforced before download), `blockedMarketplaces` (blocklist, enforced before download), `allowedChannelPlugins` (allowlist of channel plugins that may push messages, requires `channelsEnabled: true`), `pluginTrustMessage` (custom trust-warning text)
@@ -43,6 +47,7 @@
 - Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation
 - Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins; if the fetch or archive validation fails, Claude Code reports a plugin load error and starts without the plugin
 - Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing
+- Plugin environment variables: `CLAUDE_CODE_PLUGIN_CACHE_DIR` (override plugins root dir, default `~/.claude/plugins`), `CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS` (git operation timeout, default 120000 ms), `CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE` (set to `1` to preserve marketplace cache on git failure), `CLAUDE_CODE_PLUGIN_PREFER_HTTPS` (set to `1` to clone GitHub sources over HTTPS instead of SSH), `CLAUDE_CODE_PLUGIN_SEED_DIR` (path to read-only plugin seed directories, separated by `:` on Unix or `;` on Windows), `CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL` (set to `1` to skip automatic official marketplace addition on first run)
 
 ## Recommended
 - Start with standalone (`.claude/`) for quick iteration; convert to a plugin only when ready to share

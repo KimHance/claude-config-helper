@@ -15,6 +15,7 @@
 - Automatic timestamped backups are created for settings files; the 5 most recent are retained
 - The settings JSON does not allow comments (standard JSON, not JSONC)
 - Schema may lag the latest CLI; warnings on recent fields don't invalidate the config
+- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN`, `ANTHROPIC_WORKSPACE_ID`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_FORCE_SYNC_OUTPUT`, `CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE`, `CLAUDE_CODE_PLUGIN_PREFER_HTTPS`, `CLAUDE_CODE_POWERSHELL_RESPECT_EXECUTION_POLICY`, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, `CLAUDE_CODE_ENABLE_FEEDBACK_SURVEY_FOR_OTEL`, `DISABLE_UPDATES`, `ANTHROPIC_BEDROCK_SERVICE_TIER`, `ENABLE_TOOL_SEARCH`, `OTEL_LOG_RAW_API_BODIES`, `CLAUDE_CODE_CERT_STORE`
 
 ## Advanced
 - Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
@@ -28,19 +29,19 @@
 - Terminal/UI: `tui` (`fullscreen`/`default`), `autoScrollEnabled`, `editorMode` (`normal`/`vim`), `viewMode` (`default`/`verbose`/`focus`), `preferredNotifChannel`, `showTurnDuration`, `showThinkingSummaries`, `spinnerTipsEnabled`, `spinnerTipsOverride`, `spinnerVerbs`, `syntaxHighlightingDisabled`, `prefersReducedMotion`, `terminalProgressBarEnabled`
 - Git keys: `attribution` (object with `commit` and `pr` strings; empty string hides), `includeGitInstructions`
 - Plugin keys: `enabledPlugins` (`{"plugin@marketplace": bool}`), `extraKnownMarketplaces`, `strictKnownMarketplaces` (managed), `blockedMarketplaces` (managed), `allowedChannelPlugins` (managed), `pluginTrustMessage` (managed)
-- Hooks keys: `hooks` (object), `disableAllHooks`, `allowManagedHooksOnly` (managed), `allowedHttpHookUrls`, `httpHookAllowedEnvVars`
+- Hooks keys: `hooks` (object), `disableAllHooks`, `allowManagedHooksOnly` (managed), `allowedHttpHookUrls`, `httpHookAllowedEnvVars`, `continueOnBlock`
 - MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`
-- Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
+- Subagent/team keys: `agent`, `disableAgentView`, `teammateMode` (`auto`/`in-process`/`tmux`)
 - Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
 - Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
-- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, `worktree.baseRef` (`fresh` branches from `origin/<default>`, `head` uses local HEAD; default `fresh`), plus a `.worktreeinclude` file for copying gitignored files into worktrees
+- Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, `worktree.baseRef` (`fresh` branches from `origin/<default>`, `head` uses local HEAD; default `fresh`), `worktree.bgIsolation` (set to `"none"` to let background sessions edit working copy directly), plus a `.worktreeinclude` file for copying gitignored files into worktrees
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
 - Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
-- Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
+- Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`, `maxSkillDescriptionChars` (character limit for skill descriptions), `skillListingBudgetFraction` (context budget fraction for skill listing)
 - Sandbox/security: `sandbox`, `disableSkillShellExecution`; sandbox filesystem/network sub-keys include `bwrapPath` and `socatPath` to specify custom bubblewrap/socat binary locations (Linux/WSL)
 - Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl` (v2.1.128+)
 - Session keys: `cleanupPeriodDays` (default 30, min 1), `skipWebFetchPreflight`
@@ -59,7 +60,6 @@
 - Sandbox path prefixes: `/abs`, `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings)
 - Some keys live in `~/.claude.json` (the global config, not `settings.json`): `autoConnectIde`, `autoInstallIdeExtension`, `externalEditorContext`; this file also holds OAuth session, per-project allowed tools, MCP user/local server configs, caches
 - SSH config (`sshConfigs[]`) is read only from managed and user settings, never from project/local
-- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN`
 
 ## Recommended
 - Use `.claude/settings.local.json` (gitignored) for personal overrides without polluting the team's project settings

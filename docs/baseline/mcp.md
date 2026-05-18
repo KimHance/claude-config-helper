@@ -11,7 +11,7 @@
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
-- The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
+- The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry; it also flags servers that advertise the tools capability but expose no tools
 - The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
 - The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
 
@@ -23,9 +23,10 @@
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|streamable-http", ... } } }`
 - stdio entry fields: `command`, `args`, `env`
 - http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- The `type` field accepts `streamable-http` as an alias for `http` in JSON configurations
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure

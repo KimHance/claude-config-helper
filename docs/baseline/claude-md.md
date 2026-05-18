@@ -19,6 +19,7 @@
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
 - Managed policy CLAUDE.md cannot be excluded by user settings — it always applies
+- `claudeMd` key in managed-settings.json: put managed CLAUDE.md content directly inside managed settings instead of deploying a separate file
 - Project CLAUDE.md may live at either `./CLAUDE.md` or `./.claude/CLAUDE.md`; both are picked up
 - `CLAUDE.local.md` exists per-worktree (since gitignored) — sharing personal instructions across worktrees requires importing from `~/.claude/`
 - `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5
@@ -45,6 +46,10 @@
 - `InstructionsLoaded` hook fires when CLAUDE.md or rules files load; useful for auditing exactly which instruction files are loaded and why
 - `--append-system-prompt` flag injects instructions at the system prompt level (must be passed every invocation; suited for scripts/automation)
 - Settings vs CLAUDE.md responsibility split: technical enforcement (permissions deny / sandbox / env / forceLogin) goes in managed settings, behavioral guidance goes in CLAUDE.md
+- Auto memory lets Claude accumulate knowledge across sessions automatically, storing notes in `~/.claude/projects/<project>/memory/MEMORY.md` (first 200 lines or 25KB loaded at session start)
+- `autoMemoryEnabled` setting (true by default) controls auto memory; set to false to disable, or use `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` env var
+- `autoMemoryDirectory` setting in user settings at `~/.claude/settings.json` allows customizing auto memory storage location (must be absolute path or start with `~/`)
+- `/memory` command now lists CLAUDE.md / CLAUDE.local.md / rules files, toggles auto memory on/off, and provides link to open auto memory folder; select any file to open in editor
 
 ## Recommended
 - Add to CLAUDE.md when: Claude makes the same mistake twice / a code review catches something Claude should have known / you keep typing the same correction across sessions / a new teammate would need that same context

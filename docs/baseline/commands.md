@@ -20,6 +20,7 @@
 - `/add-dir <path>` — add a working directory for file access during session; most `.claude/` config not loaded from added dirs (skills/ is the exception, and CLAUDE.md only with `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`)
 - `/agents` — manage subagent configurations (Running / Library tabs)
 - `/autofix-pr [prompt]` — spawn a Claude Code on the web session that watches the PR for the current branch and pushes fixes; requires `gh` CLI
+- `/background [prompt]` — detach the current session to run as a background agent and free this terminal; pass a prompt to send one more instruction before detaching; monitor with `claude agents`; alias `/bg`
 - `/batch <instruction>` — bundled Skill; orchestrates large-scale parallel changes across the codebase via worktree-isolated background agents
 - `/branch [name]` (alias `/fork`) — branch the current conversation; `/fork` becomes a forked-subagent spawn when `CLAUDE_CODE_FORK_SUBAGENT=1`; success message includes the new branch's session ID for `/resume`
 - `/btw <question>` — quick side question that doesn't add to the conversation history
@@ -29,7 +30,7 @@
 - `/color [color|default]` — set prompt-bar color (`red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan`); use `default` to reset, or run with no argument to pick a random color; syncs to claude.ai/code under Remote Control
 - `/compact [instructions]` — summarize conversation to free context; optional focus instructions
 - `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.)
-- `/context` — visualize context window usage
+- `/context [all]` — visualize context window usage; shows optimization suggestions for context-heavy tools and memory bloat; pass `all` to expand per-item breakdown in fullscreen mode
 - `/copy [N]` — copy assistant response (Nth-latest) to clipboard; press `w` to save to file
 - `/cost` — alias for `/usage`
 - `/debug [description]` — bundled Skill; enable debug logging for the session and analyze the debug log
@@ -44,6 +45,7 @@
 - `/feedback [report]` (alias `/bug`) — submit feedback
 - `/fewer-permission-prompts` — bundled Skill; scans transcripts and adds an allowlist to project settings
 - `/focus` — toggle focus view (last prompt + tool summary + final response); fullscreen-only; persists per `viewMode`
+- `/goal [condition|clear]` — set a goal: Claude keeps working across turns until the condition is met; with no argument shows current/most recently achieved goal; `clear`, `stop`, `off`, `reset`, `none`, or `cancel` removes an active goal early
 - `/heapdump` — write JS heap snapshot to `~/Desktop` for diagnosing memory issues
 - `/help` — show help and available commands
 - `/hooks` — view hook configurations
@@ -75,9 +77,10 @@
 - `/rename [name]` — rename session; auto-generates name if no arg
 - `/resume [session]` (alias `/continue`) — resume conversation by ID/name; finds sessions that created a PR via PR URL pasting (GitHub, GitHub Enterprise, GitLab, Bitbucket); offers to summarize stale, large sessions before re-reading
 - `/review [PR]` — review a PR locally; `/ultrareview` is the cloud variant
-- `/rewind` (aliases `/checkpoint`, `/undo`) — rewind conversation/code or summarize from a selected message
+- `/rewind` (aliases `/checkpoint`, `/undo`) — rewind conversation/code or summarize from a selected message; can compress earlier context with "Summarize up to here" option
 - `/sandbox` — toggle sandbox mode (supported platforms only)
 - `/schedule [description]` (alias `/routines`) — create/list/run routines; conversational setup
+- `/scroll-speed` — adjust mouse wheel scroll speed interactively with a ruler for preview; fullscreen-only, not available in JetBrains IDE terminal
 - `/security-review` — analyze pending changes for security vulnerabilities
 - `/setup-bedrock` — configure Amazon Bedrock auth/region/model pins (visible only with `CLAUDE_CODE_USE_BEDROCK=1`)
 - `/setup-vertex` — configure Google Vertex AI auth/project/region/model (visible only with `CLAUDE_CODE_USE_VERTEX=1`)
@@ -87,6 +90,7 @@
 - `/status` — open Settings UI on Status tab; usable while Claude is responding
 - `/statusline` — configure status line; auto-configures from shell prompt without args
 - `/stickers` — order Claude Code stickers
+- `/stop` — stop the current background session; only available while attached to a background session; transcript and worktree are kept
 - `/tasks` (alias `/bashes`) — list/manage background tasks
 - `/team-onboarding` — generate team onboarding guide from past 30 days of usage
 - `/teleport` (alias `/tp`) — pull a Claude Code web session into this terminal (claude.ai subscription required)

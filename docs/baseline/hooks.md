@@ -35,7 +35,7 @@
 - MCP elicitation events: `Elicitation`, `ElicitationResult` (matcher = MCP server name)
 - Other events: `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
 - Hook handler types: `command` (shell), `http` (POST to URL), `mcp_tool` (call connected MCP server), `prompt` (single-turn Claude eval), `agent` (subagent verification, experimental)
-- `command` hooks support `shell: bash` (default) or `shell: powershell`
+- `command` hooks support shell form (default) with `shell: bash` or `shell: powershell`, or exec form via `args: string[]` for direct executable spawn without shell
 - `http` hooks send JSON via POST; non-2xx, timeout, or connection failure is a non-blocking error
 - `http` hook headers can interpolate `$VAR` only if the var name is listed in `allowedEnvVars`
 - `mcp_tool` hooks support `${path}` substitution from the hook input JSON; require the MCP server to be already connected
@@ -48,10 +48,11 @@
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
-- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
+- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`, `terminalSequence`
+- `terminalSequence` field allows hooks to emit desktop notifications and window titles via allowlisted OSC sequences (OSC 0, 1, 2, 9, 99, 777, BEL); rejects CSI sequences, palette sequences, OSC 8/52, OSC 1337
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
-- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
+- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools, and `continueOnBlock: true` option to feed rejection reason back to Claude and continue the turn
 - Hook stdout context injection capped at 10,000 characters per call
 - Settings priority for hooks: managed policy > local (`settings.local.json`) > project (`settings.json`) > user (`~/.claude/settings.json`); plugin hooks merge in alongside
 - `allowManagedHooksOnly` policy blocks user/project/plugin hooks (force-enabled plugins exempt)
@@ -61,6 +62,7 @@
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
 - Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- Stop hooks that block repeatedly are capped: turn ends with warning after 8 consecutive blocks; override via `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` environment variable
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed

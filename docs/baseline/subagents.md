@@ -28,6 +28,7 @@
 - `memory: user` stores at `~/.claude/agent-memory/<name>/`, `memory: project` at `.claude/agent-memory/<name>/`, `memory: local` at `.claude/agent-memory-local/<name>/`
 - When `memory` is enabled, the subagent's prompt includes the first 200 lines or 25KB of `MEMORY.md`, and Read/Write/Edit tools are auto-enabled
 - `isolation: worktree` runs the subagent in a temporary git worktree; the worktree is auto-cleaned if the subagent makes no changes
+- `worktree.bgIsolation: "none"` allows background sessions in worktrees to edit the working copy directly without `EnterWorktree`
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
@@ -48,7 +49,8 @@
 - Subagents support auto-compaction at ~95% capacity by default; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` lowers the threshold
 - Foreground subagents block main conversation; background subagents pre-approve permissions before launch and auto-deny anything not pre-approved
 - `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; Ctrl+B backgrounds a running task
-- Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks
+- Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks; first fork request reuses parent's prompt cache, making forking cheaper than spawning a fresh subagent
+- Agent tool `subagent_type` matching is case- and separator-insensitive (e.g. `"Code Reviewer"` resolves to `code-reviewer`)
 - Resume an existing subagent via `SendMessage` tool with the agent ID; requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 - MCP servers can be scoped to subagents via the `mcpServers` field; the `alwaysLoad` option on an MCP server ensures all its tools are available to subagents without tool-search deferral
 
