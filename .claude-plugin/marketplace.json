@@ -8,7 +8,7 @@
     {
       "name": "cchelp",
       "description": "Review and generate Claude Code configuration files for quality and best practices",
-      "version": "3.3.0",
+      "version": "3.4.0",
       "source": "./"
     }
   ]
