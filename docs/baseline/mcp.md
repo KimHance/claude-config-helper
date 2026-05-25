@@ -14,6 +14,7 @@
 - The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
 - The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
 - The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
+- Stdio MCP servers receive `CLAUDE_PROJECT_DIR` in their environment, set to the project root directory (same directory hooks receive); servers can also call the MCP `roots/list` request to determine the launch directory
 
 ## Advanced
 - `claude mcp add --transport http <name> <url>` adds a remote HTTP server; supports `--header "K: V"` (repeatable), `--scope`, `--callback-port`, `--client-id`, `--client-secret`
@@ -24,8 +25,10 @@
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
 - `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `type` field accepts `streamable-http` as an alias for `http` (the MCP spec uses `streamable-http`; Claude Code accepts both names)
 - stdio entry fields: `command`, `args`, `env`
-- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`, `timeout`
+- `timeout` field (milliseconds) sets a per-server tool execution timeout; overrides `MCP_TOOL_TIMEOUT` env var for that server only; values below 1000 ms are floored to one second
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
@@ -57,7 +60,7 @@
 - Per-server opt-out from Tool Search deferral: set `alwaysLoad: true` on that server (v2.1.121+); per-tool opt-out via `_meta["anthropic/alwaysLoad"]: true`
 - MCP prompts surface as `/mcp__<server>__<prompt>` slash commands; arguments are parsed per the prompt's parameter schema
 - MCP resources are referenced via `@<server>:<protocol>://<path>` in prompts; auto-fetched and attached
-- MCP elicitation requests pop up form-mode or URL-mode dialogs; auto-respond via `Elicitation` hook
+- MCP elicitation requests pop up form-mode or URL-mode dialogs; auto-respond via `Elicitation` hook (runs server response without showing dialog)
 - Push messaging: server with `claude/channel` capability + `--channels` flag at startup pushes external events into the session
 - Channel push integration is documented separately under Channels and Channels reference
 - `mcp__<server>` matches all tools from that server; `mcp__<server>__<tool>` matches a specific tool

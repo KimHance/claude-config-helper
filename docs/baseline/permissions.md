@@ -30,7 +30,7 @@
 - Bash process wrappers stripped before matching: `timeout`, `time`, `nice`, `nohup`, `stdbuf`; bare `xargs` (no flags) also stripped
 - Environment runners NOT stripped: `direnv exec`, `devbox run`, `mise exec`, `npx`, `docker exec` — write specific rules like `Bash(devbox run npm test)`
 - Exec wrappers always prompt (never auto-approved by prefix): `watch`, `setsid`, `ionice`, `flock`; same for `find -exec`/`-delete`
-- Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `head`, `tail`, `grep`, `find`, `wc`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
+- Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `echo`, `pwd`, `head`, `tail`, `grep`, `find`, `wc`, `which`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
 - Unquoted globs allowed for fully-read-only commands (`ls *.ts`); commands with write/exec flags (`find`, `sort`, `sed`, `git`) still prompt with unquoted glob
 - `cd` into cwd / `additionalDirectories` is read-only; compound `cd packages/api && ls` runs without prompt; `cd` + `git` always prompts
 - PowerShell rules use same shape as Bash; aliases canonicalized (so `Get-ChildItem` rule also matches `gci`/`ls`/`dir`); case-insensitive; AST parsed; pipeline `|`, `;`, and (PS7+) `&&`/`||` split compound commands
@@ -51,7 +51,7 @@
 - Subagents, commands, output styles, hooks, and other settings are NOT loaded from `--add-dir`
 - Working dir extension methods: `--add-dir <path>` at startup, `/add-dir` mid-session, or persistent via `permissions.additionalDirectories`
 - Workspace trust dialog: project-scope `allowed-tools` in skills, `headersHelper` in MCP, etc. take effect only after the user accepts the trust dialog
-- Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`
+- Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`, `strictPluginOnlyCustomization`
 - `disableBypassPermissionsMode` works from any scope — a user can lock themselves out
 - Sandbox interaction: when sandbox enabled with `autoAllowBashIfSandboxed: true` (default), sandboxed Bash runs without prompts even with `ask: Bash(*)`; explicit deny still applies; `rm`/`rmdir` against `/`, home, or critical system paths still prompts
 

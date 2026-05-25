@@ -15,6 +15,8 @@
 - Each subagent invocation creates a fresh context; subagent context does not persist across invocations unless resumed
 - Three explicit invocation patterns: natural language (Claude decides), @-mention (`@agent-<name>` or picker, guarantees that subagent), and session-wide via `--agent <name>` or `agent` setting
 - A subagent's `description` field combined with the user request decides automatic delegation; clear specific descriptions improve routing
+- Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
+- Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>` or with subfolder path as `<plugin-name>:<folder>:<agent-name>` (e.g., `my-plugin:review:security`)
 
 ## Advanced
 - Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`
@@ -31,12 +33,13 @@
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
-- Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
+- Built-in subagents: Explore (Haiku, read-only, skips CLAUDE.md and git status), Plan (inherits model, read-only, skips CLAUDE.md and git status, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
+- Explore and Plan skip your CLAUDE.md files and the parent session's git status to keep research fast and inexpensive; every other built-in and custom subagent loads both
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
-- Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>`
+- Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>` or with subfolder path as `<plugin-name>:<folder>:<agent-name>`
 - `/agents` command opens a tabbed UI (Running / Library) for managing subagents; supports "Generate with Claude" to author the system prompt
 - `claude agents` CLI lists configured subagents grouped by source, indicating which are overridden
-- `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body
+- `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body for the system prompt
 - Disable specific subagents via `permissions.deny: ["Agent(name)"]` in settings, or `--disallowedTools "Agent(name)"`
 - Restrict which subagents an agent can spawn via `tools: Agent(worker, researcher)` (allowlist); `Agent` alone allows any; omitting `Agent` disallows all
 - This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents

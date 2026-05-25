@@ -17,6 +17,21 @@
 - Hooks defined in skill/agent frontmatter are scoped to that component's lifetime and cleaned up automatically when it finishes
 - Hooks receive the active effort level via `effort.level` in the JSON input and `$CLAUDE_EFFORT` environment variable
 - `CLAUDE_CODE_SESSION_ID` environment variable is exposed in the Bash tool subprocess, matching the `session_id` passed to hooks
+- Hook handler options include: `type`, `if`, `timeout`, `statusMessage`, `once` (skill frontmatter only), `async`, `asyncRewake`, `args` (exec form, no shell), `command`/`url`/`server`/`tool`/`prompt`
+- `Stop` and `SubagentStop` hooks receive `background_tasks` and `session_crons` in their input JSON
+- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`, `terminalSequence` (OSC sequences for terminal notifications)
+- `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
+- `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
+- `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
+- Hook stdout context injection capped at 10,000 characters per call
+- Settings priority for hooks: managed policy > local (`settings.local.json`) > project (`settings.json`) > user (`~/.claude/settings.json`); plugin hooks merge in alongside
+- `allowManagedHooksOnly` policy blocks user/project/plugin hooks (force-enabled plugins exempt)
+- `disableAllHooks: true` in any settings file disables all hooks for that scope
+- Plugin hook config lives in `hooks/hooks.json`; supports an optional top-level `description`
+- Skill/agent frontmatter `hooks:` field: same JSON shape, scoped to component lifetime; supports `once: true` (only honored here)
+- For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
+- Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
+- `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
 
 ## Advanced
 - Hook event categories: session lifecycle, per-turn prompts, tool execution, permissions, file/config changes, context compaction, worktrees, tasks, subagents, MCP elicitation, notifications
@@ -48,6 +63,7 @@
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
+- `PostToolUse` hooks support `hookSpecificOutput.continueOnBlock: true` to feed rejection reasons back to Claude and continue the turn, enabling multi-turn tool refinement
 - Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
@@ -77,7 +93,9 @@
 - For destructive command guards, return `permissionDecision: "deny"` with a clear `permissionDecisionReason` instead of just exiting non-zero
 - For permission UX nudges, return `permissionDecision: "ask"` with a reason
 - Use `additionalContext` in `hookSpecificOutput` rather than plain stdout for `SessionStart` / `UserPromptSubmit` to ensure context is reliably attached
+- Use `args` exec form to prevent shell tokenization and injection vectors when passing untrusted input paths to commands
 - For long-running side effects, use `async: true` (or `asyncRewake: true` to rewake Claude on completion)
+- Use `continueOnBlock: true` on `PostToolUse` hooks to enable multi-turn tool refinement instead of hard rejection
 - Define each conditional separately rather than trying to cram multiple conditions into a single matcher or `if`
 
 ## Anti-patterns
