@@ -26,6 +26,7 @@
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
@@ -36,6 +37,7 @@
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
+- Plugins with root-level SKILL.md are surfaced as skills using the `name` field or plugin directory name as fallback
 - Live change detection for .claude/skills/ directories within current session
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
 - --add-dir included directories have skills/ loaded automatically with live reload

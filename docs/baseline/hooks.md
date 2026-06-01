@@ -19,7 +19,7 @@
 - `CLAUDE_CODE_SESSION_ID` environment variable is exposed in the Bash tool subprocess, matching the `session_id` passed to hooks
 
 ## Advanced
-- Hook event categories: session lifecycle, per-turn prompts, tool execution, permissions, file/config changes, context compaction, worktrees, tasks, subagents, MCP elicitation, notifications
+- Hook event categories: session lifecycle, per-turn prompts, tool execution, permissions, file/config changes, context compaction, worktrees, tasks, subagents, MCP elicitation, notifications, message display
 - Session lifecycle events: `SessionStart`, `Setup`, `SessionEnd`
 - `SessionStart` matchers: `startup`, `resume`, `clear`, `compact`
 - `Setup` matchers: `init`, `maintenance`; fires only with `--init-only`, `--init` in `-p`, or `--maintenance` in `-p`
@@ -33,34 +33,45 @@
 - Worktree events: `WorktreeCreate`, `WorktreeRemove` (no matcher); `WorktreeCreate` must return path
 - Task events: `TaskCreated`, `TaskCompleted` (no matcher)
 - MCP elicitation events: `Elicitation`, `ElicitationResult` (matcher = MCP server name)
-- Other events: `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
+- Message display event: `MessageDisplay` (matcher = message context); fired while assistant message displays
+- Notification events: `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
 - Hook handler types: `command` (shell), `http` (POST to URL), `mcp_tool` (call connected MCP server), `prompt` (single-turn Claude eval), `agent` (subagent verification, experimental)
 - `command` hooks support `shell: bash` (default) or `shell: powershell`
+- `command` hooks support `args` field for exec form (spawns command directly without shell); path placeholders never need quoting in exec form
 - `http` hooks send JSON via POST; non-2xx, timeout, or connection failure is a non-blocking error
 - `http` hook headers can interpolate `$VAR` only if the var name is listed in `allowedEnvVars`
 - `mcp_tool` hooks support `${path}` substitution from the hook input JSON; require the MCP server to be already connected
 - `prompt` hooks default to a fast model with 30 s timeout; `agent` hooks default to 60 s
 - Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
-- `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
+- `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); arg-form parsing is implemented for Bash and PowerShell
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
+- `command` hooks support optional `args` array field for exec form (no shell interpolation); path placeholders (`${CLAUDE_PROJECT_DIR}`) never need quoting when using exec form
 - Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
-- Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
+- Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `Elicitation`, `ElicitationResult`, `WorktreeCreate`
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
-- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
+- `PostToolUse` hooks support `continueOnBlock: true` option to feed rejection reason back to Claude and continue the turn
+- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`, `terminalSequence`
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
 - `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
 - Hook stdout context injection capped at 10,000 characters per call
 - Settings priority for hooks: managed policy > local (`settings.local.json`) > project (`settings.json`) > user (`~/.claude/settings.json`); plugin hooks merge in alongside
 - `allowManagedHooksOnly` policy blocks user/project/plugin hooks (force-enabled plugins exempt)
+- `allowedHttpHookUrls` setting restricts HTTP hook destinations to URL patterns; supports `*` as wildcard
+- `httpHookAllowedEnvVars` setting controls which environment variables HTTP hooks can access; merged across settings sources
 - `disableAllHooks: true` in any settings file disables all hooks for that scope
 - Plugin hook config lives in `hooks/hooks.json`; supports an optional top-level `description`
 - Skill/agent frontmatter `hooks:` field: same JSON shape, scoped to component lifetime; supports `once: true` (only honored here)
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
-- Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
+- Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`, `CLAUDECODE`
 - `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- `CLAUDE_EFFORT` environment variable exposed to all hook commands
+- Timeout defaults: `command` 600s (30s for `UserPromptSubmit`), `http` 600s (30s for `UserPromptSubmit`), `mcp_tool` 600s (30s for `UserPromptSubmit`), `prompt` 30s, `agent` 60s
+- Terminal sequences via `terminalSequence` field: allowlisted OSC sequences (0, 1, 2, 9, 9;4, 99, 777) and bare BEL for notifications and window titles
+- `SessionStart` hooks support `hookSpecificOutput.reloadSkills` to re-scan skill directories in the same session
+- `SessionStart` hooks support `hookSpecificOutput.skipLfs` option set to `github`/`git` to skip Git LFS downloads from plugin marketplace sources
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed
@@ -79,6 +90,9 @@
 - Use `additionalContext` in `hookSpecificOutput` rather than plain stdout for `SessionStart` / `UserPromptSubmit` to ensure context is reliably attached
 - For long-running side effects, use `async: true` (or `asyncRewake: true` to rewake Claude on completion)
 - Define each conditional separately rather than trying to cram multiple conditions into a single matcher or `if`
+- Use `/hooks` menu command to browse and review all loaded hooks with their sources and configurations
+- Use `continueOnBlock: true` on `PostToolUse` hooks to provide Claude with rejection reasons and allow the turn to continue with alternatives
+- Use exec form `args` field instead of shell form when hook scripts need to pass complex or untrusted strings (path placeholders never need quoting in exec form)
 
 ## Anti-patterns
 - Hooks cannot block events that do not support exit code 2: `PostToolUse`, `PostToolUseFailure`, `StopFailure`, `SessionEnd`, `Notification`, `SubagentStart`, `WorktreeRemove`, `PostCompact`, `FileChanged`, `CwdChanged`, `InstructionsLoaded`
@@ -86,7 +100,7 @@
 - Hook `permissionDecision: "allow"` does NOT override deny rules in `permissions`; deny still wins
 - `defer` permission decision fails for batches with more than one tool call; only single-tool batches support deferral
 - `FileChanged` matcher is NOT a regex — `*.env` does not match anything; only literal filenames pipe-separated work
-- `if` arg-form parsing is implemented for Bash; for other tools the condition may always match because the argument shape can't be parsed
+- `if` arg-form parsing is implemented for Bash and PowerShell (fixed in v2.1.147); for other tools the condition may always match because the argument shape can't be parsed
 - `once: true` is silently ignored in `settings.json` and in agent frontmatter; only skill frontmatter honors it
 - Hook stdout exceeding 10,000 characters is truncated; do not rely on long-form output to inject context
 - `mcp_tool` hooks fail (non-blocking error) if invoked from `SessionStart` / `Setup` before the MCP server has connected

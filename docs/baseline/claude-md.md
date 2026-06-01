@@ -21,7 +21,7 @@
 - Managed policy CLAUDE.md cannot be excluded by user settings — it always applies
 - Project CLAUDE.md may live at either `./CLAUDE.md` or `./.claude/CLAUDE.md`; both are picked up
 - `CLAUDE.local.md` exists per-worktree (since gitignored) — sharing personal instructions across worktrees requires importing from `~/.claude/`
-- `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5
+- `@path/to/file` import syntax: imported files expand inline at session start, maximum depth of four hops
 - Import paths can be relative (resolved against the file containing the import, not cwd) or absolute (`@~/.claude/foo.md` or `@/abs/path.md`)
 - First time Claude Code sees external imports it shows an approval dialog; declining permanently disables those imports
 - `AGENTS.md` is NOT read by Claude Code; if a repo uses AGENTS.md, create a CLAUDE.md that does `@AGENTS.md` and append Claude-specific instructions

@@ -7,7 +7,7 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, persistent bidirectional connection for event push)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
@@ -17,15 +17,18 @@
 
 ## Advanced
 - `claude mcp add --transport http <name> <url>` adds a remote HTTP server; supports `--header "K: V"` (repeatable), `--scope`, `--callback-port`, `--client-id`, `--client-secret`
+- When configuring MCP servers in JSON (`.mcp.json` or `claude mcp add-json`), the `type` field accepts `streamable-http` as an alias for `http` (the MCP spec uses `streamable-http` internally)
 - `claude mcp add --transport sse <name> <url>` is deprecated; HTTP transport is preferred
 - `claude mcp add --transport stdio <name> -- <cmd> [args...]` adds a local stdio server; everything before `--` is options, everything after is the command and its args
 - `--env KEY=value` is repeatable and must come before the server name; `--scope local|project|user` selects scope
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|ws", ... } } }`
 - stdio entry fields: `command`, `args`, `env`
-- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `timeout`, `alwaysLoad`
+- WebSocket entry fields: `type` (`"ws"`), `url`, `headers`, `headersHelper`, `timeout`, `alwaysLoad` (same as http except no OAuth support; authentication is header-only)
+- `timeout` field (milliseconds) sets per-server tool execution timeout, overriding `MCP_TOOL_TIMEOUT` env var for that server; values below 1000 ms floor to 1 second
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
@@ -47,7 +50,9 @@
 - Authentication errors and 404s are not retried (require config change)
 - Stdio servers are not auto-reconnected
 - `MCP_TIMEOUT` env var sets startup timeout (e.g. `MCP_TIMEOUT=10000`)
+- `MCP_TOOL_TIMEOUT` env var sets per-request fetch timeout for remote HTTP/SSE servers (overridden by per-server `timeout` field if set)
 - `MCP_CONNECTION_NONBLOCKING=1` lets other servers connect in background; servers with `alwaysLoad: true` still block startup up to 5 s
+- Stdio servers receive `CLAUDE_PROJECT_DIR` (project root directory), `CLAUDE_CODE_SESSION_ID`, and `CLAUDECODE=1` in their environment (v2.1.157+)
 - MCP tool output > 10,000 tokens triggers a warning; default cap is 25,000 tokens, raise via `MAX_MCP_OUTPUT_TOKENS`
 - Server-side tool authors can set `_meta["anthropic/maxResultSizeChars"]` (up to 500,000) to opt individual tools out of the persist-to-disk threshold for text content
 - Image content is always subject to `MAX_MCP_OUTPUT_TOKENS`
@@ -64,6 +69,7 @@
 - Channel-mode servers, prompt commands, and resources are normalized so that spaces become underscores in identifiers
 - Managed MCP option 1 (`managed-mcp.json`): exclusive control, fixed server set, users cannot add their own; locations: macOS `/Library/Application Support/ClaudeCode/managed-mcp.json`, Linux/WSL `/etc/claude-code/managed-mcp.json`, Windows `C:\Program Files\ClaudeCode\managed-mcp.json`
 - Managed MCP option 2: policy-based via `allowedMcpServers` / `deniedMcpServers` in managed settings; entries match by `serverName`, `serverCommand` (exact array), or `serverUrl` (wildcard `*` supported)
+- Managed setting `allowAllClaudeAiMcps` (v2.1.149+): when set to `true`, loads claude.ai cloud MCP connectors alongside `managed-mcp.json`
 - Allowlist behavior: undefined = no restriction, `[]` = full lockdown, list = only matching servers allowed
 - Denylist behavior: undefined or `[]` = nothing blocked, list = matching servers blocked across all scopes; denylist always takes absolute precedence over allowlist
 - Stdio servers must match `serverCommand` if any command entries exist in allowlist; remote servers must match `serverUrl` if any URL entries exist

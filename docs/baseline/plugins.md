@@ -9,19 +9,21 @@
 - A plugin lives in its own directory containing `.claude-plugin/plugin.json` (the manifest)
 - Manifest fields: `name` (unique identifier and skill namespace), `description`, `version` (optional — falls back to git SHA), `author` (optional)
 - Plugin skills are namespaced as `/<plugin-name>:<skill-name>` to prevent conflicts with other plugins or standalone skills
-- Standalone vs plugin: standalone (`.claude/<dir>/`) is for personal / project-only / quick experiments, with plain skill names; plugin is for sharing, multi-project reuse, versioning, marketplace distribution, with namespaced skill names
+- Standalone vs plugin: standalone (`.claude/`) is for personal / project-only / quick experiments, with plain skill names; plugin is for sharing, multi-project reuse, versioning, marketplace distribution, with namespaced skill names
 - Plugins are discovered through marketplaces (registered separately) or direct local/url loading via `--plugin-dir <path>` or `--plugin-url <archive-url>`
+- Skills-directory plugins: `claude plugin init <name>` scaffolds a plugin in `~/.claude/skills/<name>/` that auto-loads as `<name>@skills-dir` without marketplace install; auto-load is automatic on session start once workspace trust is granted
 - The `/plugin` slash command manages installation, enabling/disabling, listing, and updates
 - After enabling/disabling a plugin or editing plugin files, run `/reload-plugins` to apply changes without restarting
 - The `enabledPlugins` settings key (`{"<plugin>@<marketplace>": true|false}`) is what actually turns plugins on/off; can live in user, project, local, or managed settings
 - Local copy via `--plugin-dir` takes precedence over an installed plugin of the same name for that session, except when force-enabled in managed settings
 - `--plugin-dir` accepts both directories and `.zip` plugin archives
+- Plugin dependencies: `dependencies` in `plugin.json` can list required plugins by name (string) or with version constraints (`{name, version}`); `claude plugin enable` cascade-enables dependencies; `claude plugin disable` refuses when another enabled plugin depends on the target
 
 ## Advanced
 - Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings)
 - Only `plugin.json` belongs inside `.claude-plugin/`; everything else (`skills/`, `agents/`, `hooks/`, `commands/`, `.mcp.json`, etc.) lives at plugin root
 - Plugin manifest is **optional** — if `.claude-plugin/plugin.json` is absent, components are auto-discovered in default locations and the plugin name is derived from the directory name
-- Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries)
+- Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries), `defaultEnabled` (boolean; defaults to true)
 - `version` field absent + git distribution → every commit counts as a new version; setting `version` makes updates explicit
 - Plugin install scopes (where `enabledPlugins` is recorded): `user` (default, `~/.claude/settings.json`), `project` (`.claude/settings.json`), `local` (`.claude/settings.local.json`, gitignored), `managed` (managed settings, read-only)
 - Plugin `settings.json` (plugin root): currently only `agent` and `subagentStatusLine` keys honored; `agent` activates one of the plugin's custom agents as the main thread system prompt
@@ -32,7 +34,8 @@
 - Plugin themes are experimental; live in `themes/` as JSON with `name`, `base` (preset), `overrides` (sparse color tokens)
 - Bundled-file env vars: `${CLAUDE_PLUGIN_ROOT}` (plugin install dir), `${CLAUDE_PLUGIN_DATA}` (persistent data dir, survives plugin updates)
 - Plugin agents have stricter security: `hooks`, `permissionMode` frontmatter fields are silently ignored when loading from a plugin
-- Plugin MCP servers run from `.mcp.json` at plugin root (or inline `mcpServers` in `plugin.json`); start when plugin is enabled, stop when disabled
+- Plugin MCP servers run from `.mcp.json` at plugin root (or inline `mcpServers` in `plugin.json`); start when plugin is enabled, stop when disabled; receive environment variables `CLAUDE_CODE_SESSION_ID`, `CLAUDECODE=1` (always set), `CLAUDE_PROJECT_DIR` (for stdio servers)
+- MCP server manifest field `alwaysLoad: true` skips tool-search deferral (v2.1.121+)
 - LSP servers in `.lsp.json` give Claude real-time code intelligence (per-language `command`, `args`, `extensionToLanguage` map); user must have the language server binary installed locally
 - Monitors in `monitors/monitors.json` watch logs/files/external status and push notifications to Claude during the session; each entry has `name`, `command`, optional `description`, `when` trigger
 - `bin/` directory: executables placed here are added to Bash tool's `PATH` while the plugin is enabled
@@ -41,6 +44,8 @@
 - Managed-only plugin policies: `strictKnownMarketplaces` (allowlist of marketplace sources, enforced before download), `blockedMarketplaces` (blocklist, enforced before download), `allowedChannelPlugins` (allowlist of channel plugins that may push messages, requires `channelsEnabled: true`), `pluginTrustMessage` (custom trust-warning text)
 - Force-enabled plugins: managed settings can pin a plugin to enabled; users cannot override; force-enabled plugins' hooks are exempt from `allowManagedHooksOnly`
 - Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation
+- Plugin CLI commands: `claude plugin init <name>` scaffolds a plugin; `claude plugin validate` checks structure and references; `claude plugin details <name>` shows component inventory and token cost; `claude plugin prune` removes orphaned dependencies; `claude plugin marketplace remove --scope <user|project|local>` removes marketplace from specified scope
+- Hook JSON enhancements: `SessionStart` hooks can return `reloadSkills: true` to trigger skill re-scan in same session, or `hookSpecificOutput.sessionTitle` to set session title; `MessageDisplay` hook type transforms or hides assistant message text; `PostToolUse` hooks can return `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools; hooks can use `type: "mcp_tool"` to invoke MCP tools directly; hook inputs include `effort.level`, `duration_ms` (tool execution time), `background_tasks`, and `session_crons`
 - Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins; if the fetch or archive validation fails, Claude Code reports a plugin load error and starts without the plugin
 - Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing
 
@@ -58,6 +63,8 @@
 - Use `--plugin-url` only for archives you control or trust — same trust considerations as any plugin source
 - After conversion from standalone, delete the original `.claude/` files to avoid duplicate-name resolution surprises
 - Keep `commands/` only for legacy migration; author new plugin extensions as `skills/`
+- Run `claude plugin validate` before submitting to the community marketplace; the review pipeline runs the same check
+- Community marketplace submission: use forms at claude.ai/settings/plugins/submit or console.platform.claude.com/plugins/submit; approved plugins are pinned to a specific commit SHA, and CI automatically bumps the pin on new commits
 
 ## Anti-patterns
 - Do not put `commands/`, `agents/`, `skills/`, `hooks/`, `.mcp.json`, etc. inside `.claude-plugin/` — only `plugin.json` belongs there

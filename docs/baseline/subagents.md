@@ -33,24 +33,35 @@
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
 - Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
-- Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>`
+- Project subagents discovered by walking up from cwd; `--add-dir` directories grant file access only and are not scanned for subagents
+- Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>`; a file at `agents/review/security.md` in plugin `my-plugin` registers as `my-plugin:review:security` (subfolder becomes part of scoped identifier)
 - `/agents` command opens a tabbed UI (Running / Library) for managing subagents; supports "Generate with Claude" to author the system prompt
-- `claude agents` CLI lists configured subagents grouped by source, indicating which are overridden
+- `claude agents` CLI provides an Agent View dashboard listing every session (running, blocked on you, or done), grouped by source and indicating which subagents are overridden
 - `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body
 - Disable specific subagents via `permissions.deny: ["Agent(name)"]` in settings, or `--disallowedTools "Agent(name)"`
 - Restrict which subagents an agent can spawn via `tools: Agent(worker, researcher)` (allowlist); `Agent` alone allows any; omitting `Agent` disallows all
 - This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents
 - Subagent file edits to disk require session restart; `/agents` interface changes apply immediately
+- Tools NOT available to subagents even when listed in `tools` field: `Agent`, `AskUserQuestion`, `EnterPlanMode`, `ExitPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`
 - Resolution order for the model: `CLAUDE_CODE_SUBAGENT_MODEL` env var > per-invocation `model` parameter > frontmatter `model` > main conversation's model
+- `--agent <name>` now honors the agent definition's `permissionMode` for built-in agents (v2.1.142)
+- `claude agents` command supports flags for background session configuration: `--add-dir`, `--settings`, `--mcp-config`, `--plugin-dir`, `--permission-mode`, `--model`, `--effort`, `--dangerously-skip-permissions` (v2.1.142)
 - Subagents support hooks `PreToolUse`, `PostToolUse`, and `Stop` (converted to `SubagentStop` at runtime); main session can also subscribe via `SubagentStart`/`SubagentStop` in `settings.json`
 - Hooks receive the active effort level via `effort.level` JSON input field and `$CLAUDE_EFFORT` environment variable
 - Subagent transcripts persist at `~/.claude/projects/{project}/{sessionId}/subagents/agent-{agentId}.jsonl`, independent of main conversation, cleaned per `cleanupPeriodDays` (default 30)
 - Subagents support auto-compaction at ~95% capacity by default; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` lowers the threshold
 - Foreground subagents block main conversation; background subagents pre-approve permissions before launch and auto-deny anything not pre-approved
-- `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; Ctrl+B backgrounds a running task
+- `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; `Ctrl+B` backgrounds a running task
+- Request background execution with `/bg` or `←←` shortcut (v2.1.139); background sessions can be resumed with `/resume` (v2.1.144)
+- Background shell commands: type `! <command>` to run a command as a background session, or `claude --bg --exec '<command>'` (v2.1.147+)
+- `EnterWorktree` tool is immediately available in background sessions (v2.1.141)
+- `worktree.bgIsolation` setting controls background session file editing: omit or set to `"worktree"` for isolated worktrees; set to `"none"` for direct working copy edits (v2.1.133)
 - Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks
-- Resume an existing subagent via `SendMessage` tool with the agent ID; requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
-- MCP servers can be scoped to subagents via the `mcpServers` field; the `alwaysLoad` option on an MCP server ensures all its tools are available to subagents without tool-search deferral
+- Running forks appear in a panel below the prompt with keys: `↑↓` to move between rows, `Enter` to open transcript, `x` to dismiss/stop, `Esc` to return focus (v2.1.117+)
+- Fork prompt cache reuse: a fork's first request reuses the parent's prompt cache since system prompt and tools are identical, making forking cheaper than spawning a fresh subagent (v2.1.117+)
+- MCP servers can be scoped to subagents via the `mcpServers` field; restrictions apply to subagent frontmatter MCP declarations: `--strict-mcp-config`, `--bare`, enterprise managed MCP config, and policy-based allowlists/denylists (v2.1.153)
+- `alwaysLoad` option on an MCP server ensures all its tools are available to subagents without tool-search deferral
+- Subagent definitions from any scope are available to agent teams: when spawning a teammate, reference a subagent type and the teammate uses its `tools` and `model`, with the definition's body appended to the teammate's system prompt
 
 ## Recommended
 - Design each subagent to excel at one specific task; write detailed `description` so Claude knows when to delegate
@@ -60,6 +71,7 @@
 - Use subagents to isolate high-volume output (test runs, log analysis, doc fetches) so verbose content stays out of main context
 - Spawn multiple subagents in parallel for independent investigations (research splits)
 - Chain subagents in sequence for multi-step workflows (reviewer → optimizer)
+- For tasks exceeding context window or needing sustained parallelism, use [agent teams](/en/agent-teams) where each worker has its own independent context
 - Use `permissionMode: plan` for read-only exploration agents; `acceptEdits` for agents expected to modify files
 - Use `isolation: worktree` when subagent edits could conflict with parallel work in the main session
 - Preload domain-specific skills via `skills` field rather than relying on the subagent to discover them at runtime
@@ -68,6 +80,8 @@
 - Check project subagents into version control under `.claude/agents/` so the team shares them
 - Use `--agents` JSON flag for ephemeral, automation-only subagents that should not persist
 - Use a fork (when fork mode is enabled) when a named subagent would need too much background to be useful
+- Use [Skills](/en/skills) instead of subagents when you want reusable prompts or workflows that run in the main conversation context rather than isolated subagent context
+- Use `/btw` for quick questions about something already in your conversation; it sees full context but has no tool access and does not add to history
 - Generate the system prompt via `/agents` → "Generate with Claude" rather than authoring blindly
 - Use `@-mention` to guarantee a specific subagent runs for one task instead of relying on automatic delegation
 
