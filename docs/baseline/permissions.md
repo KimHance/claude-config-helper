@@ -15,6 +15,7 @@
 - Hook exit-code-2 block takes precedence over allow rules (hook can block what permissions would otherwise allow)
 - Permissions and sandboxing are complementary: permissions cover all tools, sandboxing OS-enforces only Bash
 - The `/permissions` UI also surfaces working directories and recent auto-mode denials
+- When sandboxing is enabled with `autoAllowBashIfSandboxed: true` (the default), sandboxed Bash commands run without permission prompts even when `ask: Bash(*)` rules are present; explicit deny rules still apply, and `rm`/`rmdir` against `/`, home, or critical system paths still prompt
 
 ## Advanced
 - Permission modes (`permissions.defaultMode`): `default` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based with optional hard-deny rules), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
@@ -33,7 +34,7 @@
 - Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `head`, `tail`, `grep`, `find`, `wc`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
 - Unquoted globs allowed for fully-read-only commands (`ls *.ts`); commands with write/exec flags (`find`, `sort`, `sed`, `git`) still prompt with unquoted glob
 - `cd` into cwd / `additionalDirectories` is read-only; compound `cd packages/api && ls` runs without prompt; `cd` + `git` always prompts
-- PowerShell rules use same shape as Bash; aliases canonicalized (so `Get-ChildItem` rule also matches `gci`/`ls`/`dir`); case-insensitive; AST parsed; pipeline `|`, `;`, and (PS7+) `&&`/`||` split compound commands
+- PowerShell rules use same shape as Bash; aliases canonicalized (so `Get-ChildItem` rule also matches `gci`/`ls`/`dir`); case-insensitive; AST parsed; pipeline `|`, `;`, and (PS7+) `&&`/`||` split compound commands; on Windows, PowerShell is the primary shell and enabled by default
 - Read/Edit specifier patterns (gitignore-spec): `//abs/path` (filesystem-absolute), `~/path` (home), `/path` (project-root-relative), `path` or `./path` (cwd-relative)
 - WARNING: `/Users/alice/file` is project-root-relative, NOT absolute; absolute requires `//Users/alice/file`
 - Windows paths normalized to POSIX: `C:\Users\alice` → `/c/Users/alice`; cross-drive `**` use `//**/.env`
@@ -57,9 +58,11 @@
 
 ## Recommended
 - Use deny rules sparingly but decisively for secrets, credentials, and dangerous commands (`Read(./.env)`, `Read(./secrets/**)`, `Bash(curl *)`, `Bash(wget *)`)
+- Use deny rules to protect shell startup files and git configuration that grant code execution if modified: `Read(~/.zshenv)`, `Read(~/.zlogin)`, `Read(~/.bash_login)`, `Read(~/.config/git/**)`
 - Use `permissions.allow` for predictable, repeatedly-used commands (`Bash(npm run *)`, `Bash(git commit *)`, etc.)
 - Prefer `WebFetch(domain:trusted.com)` allowlist + Bash network-tool deny over trying to constrain `Bash(curl ...)` arguments
 - Treat unquoted command-arg patterns (`Bash(curl http://github.com/ *)`) as fragile — use hooks or sandbox for real URL filtering
+- When using `acceptEdits` mode, be aware that Claude may attempt edits to build-tool configuration files (`.npmrc`, `.yarnrc*`, `bunfig.toml`, `.bazelrc`, `.pre-commit-config.yaml`, `.devcontainer/`, etc.) that grant code execution; add deny rules for files you don't intend to be editable
 - Use `Agent(name)` deny rules to disable specific subagents an admin doesn't trust
 - Use `Skill(name)` permission rules to allow / deny specific skills without editing their frontmatter
 - Use `additionalDirectories` for trusted siblings (sibling repos, shared docs) instead of running from a higher cwd

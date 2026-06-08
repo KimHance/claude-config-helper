@@ -7,7 +7,7 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, persistent bidirectional, header auth only)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
@@ -23,18 +23,18 @@
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|ws", ... } } }`; `type: "streamable-http"` is an alias for `http` per MCP specification
 - stdio entry fields: `command`, `args`, `env`
-- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- http/sse/ws entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`, `timeout`; WebSocket uses header-only auth (no OAuth)
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
 - Scope precedence (highest to lowest): local > project > user > plugin servers > claude.ai connectors
 - Scopes match by name; plugins/connectors match by endpoint (URL or command), so a duplicate endpoint is suppressed
-- Project-scoped servers in `.mcp.json` require user approval before use; reset with `claude mcp reset-project-choices`
+- Project-scoped servers in `.mcp.json` require user approval before use; reset with `claude mcp reset-project-choices`; pending servers show as `⏸ Pending approval` in `claude mcp list/get` output (v2.1.154)
 - Plugin-bundled MCP servers live in plugin's `.mcp.json` or inline in `plugin.json`; use `${CLAUDE_PLUGIN_ROOT}` for bundled files and `${CLAUDE_PLUGIN_DATA}` for persistent state
 - Plugin servers start when plugin is enabled; `/reload-plugins` refreshes after enable/disable mid-session
-- claude.ai connectors are auto-shared if logged in with claude.ai account; disable with `ENABLE_CLAUDEAI_MCP_SERVERS=false`
+- claude.ai connectors are auto-shared if logged in with claude.ai account; disable with `ENABLE_CLAUDEAI_MCP_SERVERS=false`; from v2.1.161 unused connectors collapse behind `Show unused connectors` row
 - Servers added in Claude Code take precedence over a claude.ai connector pointing at the same URL
 - OAuth flow: add server → run `/mcp` → browser login → tokens stored in macOS keychain or credentials file (not in config)
 - For servers without dynamic client registration, register an OAuth app first then pass `--client-id` and `--client-secret`
@@ -48,6 +48,10 @@
 - Stdio servers are not auto-reconnected
 - `MCP_TIMEOUT` env var sets startup timeout (e.g. `MCP_TIMEOUT=10000`)
 - `MCP_CONNECTION_NONBLOCKING=1` lets other servers connect in background; servers with `alwaysLoad: true` still block startup up to 5 s
+- Per-server `timeout` field (milliseconds) sets a hard wall-clock limit per tool call; values below 1000 are ignored (v2.1.162 onward); overrides `MCP_TOOL_TIMEOUT` for that server only; for HTTP/SSE the per-request first-byte budget has a 60-second minimum
+- Stdio servers receive `CLAUDECODE=1` and `CLAUDE_CODE_SESSION_ID` environment variables (v2.1.154+)
+- Stdio servers can read `CLAUDE_PROJECT_DIR` from their environment to resolve project-relative paths without depending on working directory
+- `alwaysLoad: true` on a server entry (or `_meta["anthropic/alwaysLoad"]: true` on an individual tool in `tools/list` response) makes that server or tool always load upfront, bypassing Tool Search deferral; per-tool alwaysLoad requires v2.1.121+
 - MCP tool output > 10,000 tokens triggers a warning; default cap is 25,000 tokens, raise via `MAX_MCP_OUTPUT_TOKENS`
 - Server-side tool authors can set `_meta["anthropic/maxResultSizeChars"]` (up to 500,000) to opt individual tools out of the persist-to-disk threshold for text content
 - Image content is always subject to `MAX_MCP_OUTPUT_TOKENS`
