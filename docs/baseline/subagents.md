@@ -19,7 +19,7 @@
 ## Advanced
 - Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`
 - `tools` is allowlist; `disallowedTools` is denylist; if both set, denylist applied first then allowlist resolved against the remainder
-- `model` accepts `sonnet`/`opus`/`haiku`/full model id (e.g. `claude-opus-4-7`)/`inherit`; defaults to `inherit`
+- `model` accepts `sonnet`/`opus`/`haiku`/`fable`/full model id (e.g. `claude-opus-4-7`)/`inherit`; defaults to `inherit`
 - `permissionMode` values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`
 - `permissionMode` is ignored for plugin subagents (security)
 - `mcpServers` and `hooks` frontmatter are also ignored for plugin subagents (security)
@@ -39,7 +39,8 @@
 - `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body
 - Disable specific subagents via `permissions.deny: ["Agent(name)"]` in settings, or `--disallowedTools "Agent(name)"`
 - Restrict which subagents an agent can spawn via `tools: Agent(worker, researcher)` (allowlist); `Agent` alone allows any; omitting `Agent` disallows all
-- This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents
+- This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents (with exception of nested subagents below)
+- Nested subagents (v2.1.172+): A subagent can spawn its own subagents up to 5 levels deep; foreground subagents can spawn at any depth, background subagents at depth 5 cannot spawn further; forks cannot spawn other forks
 - Subagent file edits to disk require session restart; `/agents` interface changes apply immediately
 - Resolution order for the model: `CLAUDE_CODE_SUBAGENT_MODEL` env var > per-invocation `model` parameter > frontmatter `model` > main conversation's model
 - Subagents support hooks `PreToolUse`, `PostToolUse`, and `Stop` (converted to `SubagentStop` at runtime); main session can also subscribe via `SubagentStart`/`SubagentStop` in `settings.json`
@@ -72,7 +73,7 @@
 - Use `@-mention` to guarantee a specific subagent runs for one task instead of relying on automatic delegation
 
 ## Anti-patterns
-- Subagents cannot spawn other subagents; nested delegation is unsupported — use Skills or chain from main conversation instead
+- Nested subagents are now supported (v2.1.172+): up to 5 levels deep with depth-based limits for background subagents; omit `Agent` from tools to prevent specific subagents from spawning — use Skills or chain from main conversation for more complex workflows
 - Do not use subagents for tasks needing frequent back-and-forth or iterative refinement; main conversation is better
 - Do not assume a subagent inherits skills from the parent; always list them explicitly in `skills` field
 - Do not edit `.claude/agents/` files directly during a session expecting changes to apply; restart, or use `/agents`

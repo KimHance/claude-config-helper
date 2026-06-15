@@ -17,7 +17,7 @@
 - Schema may lag the latest CLI; warnings on recent fields don't invalidate the config
 
 ## Advanced
-- Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
+- Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`, `advisorModel` (v2.1.98+), `disableAgentView`, `disableBundledSkills`, `disableWorkflows`, `enforceAvailableModels` (v2.1.175+), `fallbackModel`
 - Permissions keys: `permissions` (object), `allowManagedPermissionRulesOnly` (managed), `disableBypassPermissionsMode`
 - File/directory access keys: `additionalDirectories`, `claudeMdExcludes`, `respectGitignore`, `fileSuggestion`
 - Memory keys: `autoMemoryEnabled`, `autoMemoryDirectory` (latter only honored from managed/user/`--settings`, never from project/local)
@@ -25,29 +25,29 @@
 - API/credentials keys: `apiKeyHelper`, `awsAuthRefresh`, `awsCredentialExport`, `gcpAuthRefresh`, `otelHeadersHelper`
 - Environment keys: `env` (object of strings), `defaultShell` (`bash`/`powershell`)
 - Sandbox: `sandbox` (object — see sandbox sub-shape)
-- Terminal/UI: `tui` (`fullscreen`/`default`), `autoScrollEnabled`, `editorMode` (`normal`/`vim`), `viewMode` (`default`/`verbose`/`focus`), `preferredNotifChannel`, `showTurnDuration`, `showThinkingSummaries`, `spinnerTipsEnabled`, `spinnerTipsOverride`, `spinnerVerbs`, `syntaxHighlightingDisabled`, `prefersReducedMotion`, `terminalProgressBarEnabled`
+- Terminal/UI: `tui` (`fullscreen`/`default`), `autoScrollEnabled`, `editorMode` (`normal`/`vim`), `preferredNotifChannel`, `showTurnDuration`, `showThinkingSummaries`, `spinnerTipsEnabled`, `spinnerTipsOverride`, `spinnerVerbs`, `prefersReducedMotion`, `footerLinksRegexes` (v2.1.176), `wheelScrollAccelerationEnabled` (v2.1.176)
 - Git keys: `attribution` (object with `commit` and `pr` strings; empty string hides), `includeGitInstructions`
-- Plugin keys: `enabledPlugins` (`{"plugin@marketplace": bool}`), `extraKnownMarketplaces`, `strictKnownMarketplaces` (managed), `blockedMarketplaces` (managed), `allowedChannelPlugins` (managed), `pluginTrustMessage` (managed)
+- Plugin keys: `enabledPlugins` (`{"plugin@marketplace": bool}`), `extraKnownMarketplaces`, `strictKnownMarketplaces` (managed), `blockedMarketplaces` (managed), `allowedChannelPlugins` (managed), `pluginTrustMessage` (managed), `pluginSuggestionMarketplaces` (managed)
 - Hooks keys: `hooks` (object), `disableAllHooks`, `allowManagedHooksOnly` (managed), `allowedHttpHookUrls`, `httpHookAllowedEnvVars`
-- MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`
+- MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`, `allowAllClaudeAiMcps` (managed), `trustAllProjectMcpServers`
 - Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
-- Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
+- Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `requiredMinimumVersion` (managed), `requiredMaximumVersion` (managed), `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
 - Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
+- Skill keys: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`, `maxSkillDescriptionChars` (v2.1.105+), `skillListingBudgetFraction` (v2.1.105+)
 - Worktree keys: `worktree.symlinkDirectories`, `worktree.sparsePaths`, `worktree.baseRef` (`fresh` branches from `origin/<default>`, `head` uses local HEAD; default `fresh`), plus a `.worktreeinclude` file for copying gitignored files into worktrees
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
 - Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
-- Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
 - Sandbox/security: `sandbox`, `disableSkillShellExecution`; sandbox filesystem/network sub-keys include `bwrapPath` and `socatPath` to specify custom bubblewrap/socat binary locations (Linux/WSL)
 - Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl` (v2.1.128+)
 - Session keys: `cleanupPeriodDays` (default 30, min 1), `skipWebFetchPreflight`
 - Windows-only managed: `wslInheritsWindowsSettings`
 - Policy keys (managed): `policyHelper` (object with `path`, `timeoutMs`, `refreshIntervalMs`; returns JSON with `managedSettings`, `claudeMd`, `appendSystemPrompt`), `parentSettingsBehavior` (`'first-wins'` | `'merge'` for SDK managedSettings precedence)
 - `permissions` object sub-keys: `allow`, `deny`, `ask`, `defaultMode` (`default`/`acceptEdits`/`plan`/`auto`/`dontAsk`/`bypassPermissions`), `additionalDirectories`, `disableBypassPermissionsMode` (`"disable"`), `skipDangerousModePermissionPrompt` (ignored from project settings — security)
-- Permission rule syntax: `Tool` (all), `Tool(specifier)`, e.g., `Bash(npm run *)`, `Read(./.env)`, `Read(./secrets/**)`, `Read(/abs/path)`, `WebFetch(domain:example.com)`, `MCP(server:name)`, `Agent(name)`
+- Permission rule syntax: `Tool` (all), `Tool(specifier)`, e.g., `Bash(npm run *)`, `Read(./.env)`, `Read(./secrets/**)`), `Read(/abs/path)`, `WebFetch(domain:example.com)`, `MCP(server:name)`, `Agent(name)`
 - Permission evaluation: deny → ask → allow, first match wins
 - `env` field: every session gets these env vars; precedence shell > local > project > user > managed; values are always strings
 - `--settings <file-or-json>` CLI flag merges in for one session, between managed and local in precedence

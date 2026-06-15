@@ -14,11 +14,15 @@
 - Files in subdirectories below cwd are NOT loaded at launch — they load on demand when Claude reads files in those subdirectories
 - `/init` generates a starting CLAUDE.md by analyzing the codebase; if a file already exists it suggests improvements rather than overwriting
 - `CLAUDE_CODE_NEW_INIT=1` enables an interactive multi-phase `/init` flow that proposes CLAUDE.md, skills, and hooks together
-- `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files
+- `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files, toggles auto memory, and provides access to the auto memory folder
+- Auto memory lets Claude accumulate knowledge across sessions by saving notes for itself without manual effort (enabled by default since v2.1.59)
+- Auto memory stores per-project notes at `~/.claude/projects/<project>/memory/MEMORY.md` shared across worktrees; the first 200 lines or 25KB loads at session start
+- `autoMemoryEnabled` setting controls auto memory on/off; set `autoMemoryDirectory` to use a custom memory storage location
 
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
 - Managed policy CLAUDE.md cannot be excluded by user settings — it always applies
+- The `claudeMd` key in managed settings lets you put managed CLAUDE.md content directly inside `managed-settings.json` instead of deploying a separate file with the same scope and precedence as a managed CLAUDE.md file
 - Project CLAUDE.md may live at either `./CLAUDE.md` or `./.claude/CLAUDE.md`; both are picked up
 - `CLAUDE.local.md` exists per-worktree (since gitignored) — sharing personal instructions across worktrees requires importing from `~/.claude/`
 - `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5

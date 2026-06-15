@@ -18,6 +18,7 @@
 
 ## Advanced
 - Permission modes (`permissions.defaultMode`): `default` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based with optional hard-deny rules), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
+- `acceptEdits` mode prompts before writing to build-tool config files (`.npmrc`, `.yarnrc*`, `bunfig.toml`, `.bazelrc`, `.pre-commit-config.yaml`, `.devcontainer/`) and shell startup files (`.zshenv`, `.zlogin`, `.bash_login`, `~/.config/git/`)
 - `settings.autoMode.hard_deny` list: auto mode classifier rules that block unconditionally regardless of user intent or allow exceptions; any rule in this list blocks the action before the classifier evaluates it
 - `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt
 - `permissions.disableBypassPermissionsMode: "disable"` blocks bypass mode and `--dangerously-skip-permissions` flag
@@ -44,16 +45,19 @@
 - WebFetch: `WebFetch(domain:example.com)` matches that domain; bare `WebFetch` matches all
 - WebFetch alone does NOT prevent network access — Bash with `curl`/`wget` can still hit any URL; combine with Bash deny rules or sandbox
 - MCP rules: `mcp__<server>` matches all server tools; `mcp__<server>__*` wildcard same; `mcp__<server>__<tool>` specific tool
+- Deny and ask rules accept glob patterns in tool-name position: `"*"` denies all tools; `mcp__*` denies all MCP tools across all servers; allow rules do not accept unanchored globs
 - Agent rules: `Agent(name)` matches a named subagent (built-in or custom); add to deny array or use `--disallowedTools` flag
 - Skill rules: `Skill(name)` exact, `Skill(name *)` prefix-with-args
+- `Cd` rules control which directories the `/cd` command can move to; `Cd` is not model-invocable; bare `Cd` deny disables `/cd`, `Cd(<path-pattern>)` deny blocks matching targets; with any `Cd` allow rule, `/cd` switches to allowlist mode; patterns use `//`, `~/`, `/` anchors with `*` (one segment) and `**` (recursive) matching
 - `permissions.additionalDirectories` extends file access (not configuration discovery); files there follow the same permission rules as cwd
 - Configuration discovered from `--add-dir` directories: only skills (`.claude/skills/` with live reload), `enabledPlugins`/`extraKnownMarketplaces` from `.claude/settings.json`, and CLAUDE.md / `.claude/rules/` / `CLAUDE.local.md` only when `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`
 - Subagents, commands, output styles, hooks, and other settings are NOT loaded from `--add-dir`
 - Working dir extension methods: `--add-dir <path>` at startup, `/add-dir` mid-session, or persistent via `permissions.additionalDirectories`
 - Workspace trust dialog: project-scope `allowed-tools` in skills, `headersHelper` in MCP, etc. take effect only after the user accepts the trust dialog
-- Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`
+- Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`, `enforceAvailableModels` (when enabled, `availableModels` allowlist constrains Default model and user settings cannot widen a managed list)
 - `disableBypassPermissionsMode` works from any scope — a user can lock themselves out
 - Sandbox interaction: when sandbox enabled with `autoAllowBashIfSandboxed: true` (default), sandboxed Bash runs without prompts even with `ask: Bash(*)`; explicit deny still applies; `rm`/`rmdir` against `/`, home, or critical system paths still prompts
+- PostToolUse hooks support `continueOnBlock: true` to feed rejection reason back to Claude when the tool call is blocked
 
 ## Recommended
 - Use deny rules sparingly but decisively for secrets, credentials, and dangerous commands (`Read(./.env)`, `Read(./secrets/**)`, `Bash(curl *)`, `Bash(wget *)`)

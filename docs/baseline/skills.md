@@ -21,11 +21,13 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- Escape literal $ before a digit or argument name with backslash: \$1.00 in prose, \$name in skill content
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active; restriction clears on next user message
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
@@ -39,6 +41,7 @@
 - Live change detection for .claude/skills/ directories within current session
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
 - --add-dir included directories have skills/ loaded automatically with live reload
+- /reload-skills command re-scans skill directories without restarting session; SessionStart hooks can return reloadSkills: true to trigger reload in same session
 - Skill content lifecycle: single message at invocation, persists until session end
 - Auto-compaction: 25k combined budget, 5k per skill preserved, older skills dropped
 - Skill descriptions truncated at 1,536 chars (description + when_to_use combined)
