@@ -7,7 +7,8 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, persistent bidirectional connection for push events)
+- WebSocket servers are configured in `.mcp.json` or with `claude mcp add-json`; the `claude mcp add --transport` flag does not accept `ws`
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
@@ -23,20 +24,24 @@
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|ws", ... } } }`
+- `type` field accepts `streamable-http` as an alias for `http` (MCP specification uses `streamable-http`, so configurations from server documentation work without modification)
 - stdio entry fields: `command`, `args`, `env`
 - http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- ws (WebSocket) entry fields: `type`, `url`, `headers`, `headersHelper`, `timeout`, `alwaysLoad` (authentication is header-only; no OAuth support)
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
 - Scope precedence (highest to lowest): local > project > user > plugin servers > claude.ai connectors
 - Scopes match by name; plugins/connectors match by endpoint (URL or command), so a duplicate endpoint is suppressed
-- Project-scoped servers in `.mcp.json` require user approval before use; reset with `claude mcp reset-project-choices`
+- Project-scoped servers in `.mcp.json` require user approval before use; servers awaiting approval appear in `claude mcp list` as `⏸ Pending approval` and in `claude mcp get <name>` with that status indicator
+- Reset with `claude mcp reset-project-choices` after updating `.mcp.json` or to clear stale project-scope approvals
 - Plugin-bundled MCP servers live in plugin's `.mcp.json` or inline in `plugin.json`; use `${CLAUDE_PLUGIN_ROOT}` for bundled files and `${CLAUDE_PLUGIN_DATA}` for persistent state
 - Plugin servers start when plugin is enabled; `/reload-plugins` refreshes after enable/disable mid-session
 - claude.ai connectors are auto-shared if logged in with claude.ai account; disable with `ENABLE_CLAUDEAI_MCP_SERVERS=false`
 - Servers added in Claude Code take precedence over a claude.ai connector pointing at the same URL
 - OAuth flow: add server → run `/mcp` → browser login → tokens stored in macOS keychain or credentials file (not in config)
+- If authorization server advertises `offline_access` in `scopes_supported`, Claude Code appends it to pinned scopes so access token can be refreshed without new browser sign-in
 - For servers without dynamic client registration, register an OAuth app first then pass `--client-id` and `--client-secret`
 - `--callback-port <PORT>` fixes the OAuth callback port for servers requiring a pre-registered redirect URI (`http://localhost:PORT/callback`)
 - `MCP_CLIENT_SECRET` env var supplies the secret in CI / non-interactive contexts

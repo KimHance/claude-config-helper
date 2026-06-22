@@ -26,6 +26,7 @@
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active, restriction clears on next message
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
