@@ -15,6 +15,7 @@
 - `/init` generates a starting CLAUDE.md by analyzing the codebase; if a file already exists it suggests improvements rather than overwriting
 - `CLAUDE_CODE_NEW_INIT=1` enables an interactive multi-phase `/init` flow that proposes CLAUDE.md, skills, and hooks together
 - `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files
+- CLAUDE.md "too long" warning threshold scales with the model's context window size
 
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
