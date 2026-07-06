@@ -33,22 +33,26 @@
 - Worktree events: `WorktreeCreate`, `WorktreeRemove` (no matcher); `WorktreeCreate` must return path
 - Task events: `TaskCreated`, `TaskCompleted` (no matcher)
 - MCP elicitation events: `Elicitation`, `ElicitationResult` (matcher = MCP server name)
-- Other events: `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
+- Other events: `MessageDisplay` (no matcher), `Notification` (matcher = notification type), `TeammateIdle` (no matcher)
 - Hook handler types: `command` (shell), `http` (POST to URL), `mcp_tool` (call connected MCP server), `prompt` (single-turn Claude eval), `agent` (subagent verification, experimental)
 - `command` hooks support `shell: bash` (default) or `shell: powershell`
+- `command` hook `args` field (optional): when present, spawns command directly (exec form) without shell; omitted uses shell form with tokenization and pipes
 - `http` hooks send JSON via POST; non-2xx, timeout, or connection failure is a non-blocking error
 - `http` hook headers can interpolate `$VAR` only if the var name is listed in `allowedEnvVars`
 - `mcp_tool` hooks support `${path}` substitution from the hook input JSON; require the MCP server to be already connected
 - `prompt` hooks default to a fast model with 30 s timeout; `agent` hooks default to 60 s
-- Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
+- Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/hyphen/pipe-only = exact or pipe-separated list (also supports comma separators like `Edit, Write`); anything else = JavaScript regex
 - `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
-- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
-- Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
+- Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`, `prompt_id` (UUID for user prompt); subagent context adds `agent_id`, `agent_type`
+- Effort level provided via `effort.level` in JSON input and `$CLAUDE_EFFORT` environment variable
+- Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PreCompact`, `WorktreeCreate`
+- `PostToolBatch` does NOT support blocking (exit code 2 is non-blocking for this event)
 - `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
 - `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
-- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
+- Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `terminalSequence`, `hookSpecificOutput`
+- `terminalSequence` field allows terminal escape sequences (OSC 0/1/2/9/99/777, BEL only) for desktop notifications without `/dev/tty`
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
 - `PostToolUse` hooks support `hookSpecificOutput.updatedToolOutput` to replace tool output for all tools
@@ -59,8 +63,11 @@
 - Plugin hook config lives in `hooks/hooks.json`; supports an optional top-level `description`
 - Skill/agent frontmatter `hooks:` field: same JSON shape, scoped to component lifetime; supports `once: true` (only honored here)
 - For agent frontmatter, `Stop` hooks auto-convert to `SubagentStop` at runtime
-- Provided env vars: `CLAUDE_PROJECT_DIR`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PLUGIN_DATA`, `CLAUDE_CODE_REMOTE`
-- `CLAUDE_ENV_FILE` is exposed only to `SessionStart`, `Setup`, `CwdChanged`, `FileChanged` for persisting env vars across the rest of the session
+- `SessionStart` hooks can return: `additionalContext` (context for Claude), `initialUserMessage` (first user message in non-interactive mode), `sessionTitle` (auto-set title), `watchPaths` (array of paths to watch for FileChanged events), `reloadSkills` (boolean to re-scan skill directories after hook completes)
+- `SessionStart` hooks receive: `source` (startup/resume/clear/compact), `model` (active model identifier), `agent_type` (agent name when using --agent), `session_title` (current title if set)
+- `SessionStart` hooks have access to `$CLAUDE_ENV_FILE` environment variable for persisting env vars via `export` statements across the rest of the session
+- Timeout defaults: command/http/mcp_tool hooks 600 seconds; prompt hooks 30 seconds; agent hooks 60 seconds; `UserPromptSubmit` hooks 30 seconds; `MessageDisplay` hooks 10 seconds
+- Environment variables provided to hook processes: `CLAUDE_PROJECT_DIR` (project root), `CLAUDE_PLUGIN_ROOT` (plugin directory), `CLAUDE_PLUGIN_DATA` (plugin data directory), `CLAUDE_CODE_REMOTE` (set to "true" in web, not set locally), `CLAUDE_CODE_BRIDGE_SESSION_ID` (Remote Control session ID when active), `CLAUDE_ENV_FILE` (for SessionStart/Setup/CwdChanged/FileChanged), `CLAUDE_EFFORT` (current effort level in tool-use context events)
 
 ## Recommended
 - Use `PreToolUse` (not `PostToolUse`) to block dangerous tool calls — `PostToolUse` runs after the tool already executed

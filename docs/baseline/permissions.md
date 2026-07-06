@@ -17,11 +17,12 @@
 - The `/permissions` UI also surfaces working directories and recent auto-mode denials
 
 ## Advanced
-- Permission modes (`permissions.defaultMode`): `default` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based with optional hard-deny rules), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
+- Permission modes (`permissions.defaultMode`): `default` / `manual` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based with optional hard-deny rules), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
 - `settings.autoMode.hard_deny` list: auto mode classifier rules that block unconditionally regardless of user intent or allow exceptions; any rule in this list blocks the action before the classifier evaluates it
 - `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt
 - `permissions.disableBypassPermissionsMode: "disable"` blocks bypass mode and `--dangerously-skip-permissions` flag
 - `permissions.disableAutoMode: "disable"` blocks auto mode activation
+- Deny and ask rules support `Tool(param:value)` syntax to match specific input parameters (e.g., `Agent(model:opus)` denies Opus calls, `Bash(run_in_background:true)` denies background Bash); values matched against literal input, support `*` wildcard; only direct input fields matchable; `command` (Bash/PowerShell), `file_path` (Read/Edit/Write), `path` (Grep/Glob), `url` (WebFetch), `notebook_path` (NotebookEdit) not matchable via this syntax
 - `Bash(*)` ≡ `Bash` (matches all bash); wildcard `*` allowed at any position
 - Bash space-before-`*` enforces word boundary: `Bash(ls *)` matches `ls -la` but not `lsof`; `Bash(ls*)` matches both
 - `Bash(<prefix>:*)` is equivalent to `Bash(<prefix> *)`; the `:*` form is recognized only at the trailing position

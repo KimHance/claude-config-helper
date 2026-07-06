@@ -7,12 +7,12 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, persistent for event pushing)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
 - The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
-- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
+- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, `claude mcp login <name>`, `claude mcp logout <name>`, and `claude mcp serve`
 - The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
 
 ## Advanced
@@ -69,6 +69,16 @@
 - Stdio servers must match `serverCommand` if any command entries exist in allowlist; remote servers must match `serverUrl` if any URL entries exist
 - URL hostname matching is case-insensitive and trailing-dot-tolerant; paths remain case-sensitive
 - Tool descriptions and server instructions are truncated at 2KB each; put critical info first
+- `claude mcp login <name>` and `claude mcp logout <name>` (v2.1.186) enable CLI authentication without interactive menu; support `--no-browser` flag for SSH environments
+- WebSocket servers can be configured via `claude mcp add-json` with `type: "ws"`, supporting `url`, `headers`, `headersHelper`, `timeout`, and `alwaysLoad` fields; `claude mcp add --transport` does not support `ws`
+- `type: "streamable-http"` in `.mcp.json` is a valid alias for `type: "http"` for compatibility with MCP specification documentation
+- Per-server `timeout` field in `.mcp.json` (in milliseconds) sets tool execution timeout; values below 1000 fall through to `MCP_TOOL_TIMEOUT` or its default (~28 hours)
+- `MCP_TOOL_TIMEOUT` env var sets the default tool execution timeout when no per-server override is configured
+- `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` env var (v2.1.187) sets the idle window before remote HTTP/SSE/WebSocket/connector tool calls abort (default 5 minutes); set to `0` to disable; stdio servers are not subject to idle timeout
+- `CLAUDE_PROJECT_DIR` is set in spawned stdio server environment to the project root; reference via `${CLAUDE_PROJECT_DIR:-.}` in `.mcp.json` to provide a default
+- Stdio servers can call the MCP `roots/list` request to get the directory Claude Code was launched from
+- v2.1.191: capability discovery requests (`tools/list`, `prompts/list`, `resources/list`) now retry transient network and server errors up to three times with short backoff
+- `anthropic/requiresUserInteraction` in tool `_meta` marks a tool as requiring explicit approval on every call regardless of permission mode; useful for consent/access-grant steps
 
 ## Recommended
 - Prefer the `http` transport over `sse` (sse is deprecated)

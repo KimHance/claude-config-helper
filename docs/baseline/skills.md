@@ -21,22 +21,25 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- ${CLAUDE_PROJECT_DIR} resolves to project root directory for referencing project-local scripts or files
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes specified tools from Claude's available pool while skill is active
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
-- hooks field scopes hooks to skill lifecycle
+- hooks field scopes hooks to skill lifecycle; SessionStart hooks can return reloadSkills: true to re-scan skill directories
 - paths field uses glob patterns to limit auto-invocation to matching files
 - shell field sets shell to bash (default) or powershell for !`command` execution
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
 - Live change detection for .claude/skills/ directories within current session
+- /reload-skills command manually re-scans skill directories without restarting
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
 - --add-dir included directories have skills/ loaded automatically with live reload
 - Skill content lifecycle: single message at invocation, persists until session end
@@ -68,6 +71,7 @@
 - Dynamic context injection with !`command` to ground skill in live data
 - Skills with disable-model-invocation: true work best for deterministic workflows
 - Organized skills should preserve foundational knowledge while enabling flexibility
+- Stack multiple skills in one message (e.g., /skill-a /skill-b do X) to load related skills together
 
 ## Anti-patterns
 - Do not put commands/, agents/, skills/, hooks/ inside .claude-plugin/ directory

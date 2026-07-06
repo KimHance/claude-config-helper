@@ -11,8 +11,11 @@
 - Plugin skills are namespaced as `/<plugin-name>:<skill-name>` to prevent conflicts with other plugins or standalone skills
 - Standalone vs plugin: standalone (`.claude/<dir>/`) is for personal / project-only / quick experiments, with plain skill names; plugin is for sharing, multi-project reuse, versioning, marketplace distribution, with namespaced skill names
 - Plugins are discovered through marketplaces (registered separately) or direct local/url loading via `--plugin-dir <path>` or `--plugin-url <archive-url>`
+- Plugins can be developed locally in `~/.claude/skills/` directory, which auto-load on the next session without marketplace installation; use `claude plugin init <name>` to scaffold new plugins there, which load as `<name>@skills-dir`
 - The `/plugin` slash command manages installation, enabling/disabling, listing, and updates
+- `/plugin list` command lists installed plugins with optional `--enabled` or `--disabled` filters to show only enabled or disabled plugins
 - After enabling/disabling a plugin or editing plugin files, run `/reload-plugins` to apply changes without restarting
+- `/reload-skills` command reloads skill directories without restarting the session (faster for skill-only changes)
 - The `enabledPlugins` settings key (`{"<plugin>@<marketplace>": true|false}`) is what actually turns plugins on/off; can live in user, project, local, or managed settings
 - Local copy via `--plugin-dir` takes precedence over an installed plugin of the same name for that session, except when force-enabled in managed settings
 - `--plugin-dir` accepts both directories and `.zip` plugin archives
@@ -21,7 +24,7 @@
 - Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings)
 - Only `plugin.json` belongs inside `.claude-plugin/`; everything else (`skills/`, `agents/`, `hooks/`, `commands/`, `.mcp.json`, etc.) lives at plugin root
 - Plugin manifest is **optional** — if `.claude-plugin/plugin.json` is absent, components are auto-discovered in default locations and the plugin name is derived from the directory name
-- Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries)
+- Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `defaultEnabled` (set to `false` to disable plugin by default), `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries)
 - `version` field absent + git distribution → every commit counts as a new version; setting `version` makes updates explicit
 - Plugin install scopes (where `enabledPlugins` is recorded): `user` (default, `~/.claude/settings.json`), `project` (`.claude/settings.json`), `local` (`.claude/settings.local.json`, gitignored), `managed` (managed settings, read-only)
 - Plugin `settings.json` (plugin root): currently only `agent` and `subagentStatusLine` keys honored; `agent` activates one of the plugin's custom agents as the main thread system prompt
