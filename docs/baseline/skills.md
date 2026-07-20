@@ -21,11 +21,14 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- ${CLAUDE_PROJECT_DIR} resolves to project root directory for referencing scripts and files; requires v2.1.196+
+- Stacked skill invocations: /code-review /fix-issue 123 loads both skills with trailing text as arguments; requires v2.1.199+, supports up to 5 stacked skills
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
@@ -36,8 +39,10 @@
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
+- Frontmatter keys accept flexible naming: kebab-case, snake_case, and camelCase (v2.1.181+)
 - Live change detection for .claude/skills/ directories within current session
 - Nested .claude/skills/ discovery in subdirectories (monorepo support)
+- Nested skill variants auto-invoked when unqualified name invoked; project-root skill loads and appends directory-qualified variants with instructions (v2.1.203+)
 - --add-dir included directories have skills/ loaded automatically with live reload
 - Skill content lifecycle: single message at invocation, persists until session end
 - Auto-compaction: 25k combined budget, 5k per skill preserved, older skills dropped
@@ -51,6 +56,7 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- disableBundledSkills setting and CLAUDE_CODE_DISABLE_BUNDLED_SKILLS env var hide bundled skills and commands (v2.1.169+)
 
 ## Recommended
 - description should put key use case first to fit within character budget
