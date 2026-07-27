@@ -21,18 +21,22 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- ${CLAUDE_PROJECT_DIR} provides project root directory for referencing project-local files and scripts
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes listed tools from Claude's available pool while skill is active
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
+- background field (only with context: fork) set to false to wait for result instead of running in background (default: true)
 - hooks field scopes hooks to skill lifecycle
 - paths field uses glob patterns to limit auto-invocation to matching files
 - shell field sets shell to bash (default) or powershell for !`command` execution
+- Frontmatter boolean fields accept yes/no/on/off/1/0 (case-insensitive) in addition to true/false
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
@@ -48,6 +52,7 @@
 - Skill+context:fork vs subagent: delegate in skill vs define subagent separately
 - Skill vs Hook: instructions vs deterministic lifecycle automation
 - Plugin skill namespace prevents collisions with project/personal skills
+- Stacked skills: up to 6 total (first skill + up to 5 more) can be invoked at start of one message with args passed to each
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources

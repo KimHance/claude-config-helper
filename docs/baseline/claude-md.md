@@ -19,6 +19,7 @@
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
 - Managed policy CLAUDE.md cannot be excluded by user settings — it always applies
+- `claudeMd` managed settings key allows placing CLAUDE.md content directly in `managed-settings.json` instead of a separate file
 - Project CLAUDE.md may live at either `./CLAUDE.md` or `./.claude/CLAUDE.md`; both are picked up
 - `CLAUDE.local.md` exists per-worktree (since gitignored) — sharing personal instructions across worktrees requires importing from `~/.claude/`
 - `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5
@@ -34,7 +35,8 @@
 - `.claude/rules/<topic>.md` directory: organize larger projects into multiple topic files (`testing.md`, `api-design.md`, `frontend/...`, etc.); discovered recursively
 - Rules without `paths:` frontmatter load at session start, same priority as `.claude/CLAUDE.md`
 - Path-scoped rules use YAML frontmatter `paths:` with glob patterns; only loaded when Claude reads files matching the pattern
-- `paths:` accepts multiple patterns, supports brace expansion (`src/**/*.{ts,tsx}`)
+- `paths:` accepts multiple patterns, supports brace expansion (`src/**/*.{ts,tsx}`); brace expansion shares a per-rule budget of 1,000 expanded patterns and 4 MiB (patterns without braces do not count against the budget)
+- Glob bracket expressions: `[` starts a bracket expression (e.g., `[abc]`); invalid bracket syntax like `photos [2024/**` matches nothing while other patterns in the rule continue; escape literal `[` as `\[`
 - `.claude/rules/` supports symlinks, including links to shared directories or individual files
 - Circular symlinks are detected and handled gracefully
 - User-level rules at `~/.claude/rules/` apply to every project; load before project rules so project rules have higher priority
@@ -54,6 +56,7 @@
 - Use markdown headers and bullets to group related instructions; structured sections are followed more reliably than dense paragraphs
 - Be specific and verifiable: "Use 2-space indentation" beats "format code properly"; "Run `npm test` before committing" beats "test your changes"; "API handlers live in `src/api/handlers/`" beats "keep files organized"
 - Review CLAUDE.md and rules periodically to remove outdated or contradicting instructions; if two rules conflict, Claude may pick arbitrarily
+- Run `/doctor` to identify trimmable CLAUDE.md content: it suggests removing material Claude can derive from the codebase (directory layouts, dependency lists, architecture overviews) while preserving project conventions and gotchas
 - For path-scoped guidance (e.g., rules that apply only inside `src/api/`), prefer `.claude/rules/<topic>.md` with `paths:` frontmatter over a nested CLAUDE.md
 - Use `@path` imports for organization (splitting one CLAUDE.md into themed files), even though imported content still loads at launch
 - Use `CLAUDE.local.md` (gitignored) for personal sandbox URLs / preferred test data / personal worktree notes

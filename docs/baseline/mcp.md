@@ -7,25 +7,28 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, for persistent bidirectional connections)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
 - The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
-- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
+- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, `claude mcp login <name>`, `claude mcp logout <name>`, and `claude mcp serve`
 - The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
 
 ## Advanced
 - `claude mcp add --transport http <name> <url>` adds a remote HTTP server; supports `--header "K: V"` (repeatable), `--scope`, `--callback-port`, `--client-id`, `--client-secret`
 - `claude mcp add --transport sse <name> <url>` is deprecated; HTTP transport is preferred
 - `claude mcp add --transport stdio <name> -- <cmd> [args...]` adds a local stdio server; everything before `--` is options, everything after is the command and its args
+- WebSocket servers (type `ws`) hold persistent bidirectional connections and are configured in `.mcp.json` or via `claude mcp add-json` (no `--transport ws` CLI flag); support `url`, `headers`, `headersHelper`, `timeout`, and `alwaysLoad` fields; use static headers or `headersHelper` for authentication (OAuth 2.0 not supported)
 - `--env KEY=value` is repeatable and must come before the server name; `--scope local|project|user` selects scope
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `claude mcp login <name>` and `claude mcp logout <name>` run OAuth flows from the command line without the `/mcp` panel; support `--no-browser` for SSH and headless sessions (v2.1.186+)
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|ws", ... } } }`
 - stdio entry fields: `command`, `args`, `env`
-- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `timeout`, `alwaysLoad`
+- ws (WebSocket) entry fields: `type`, `url`, `headers`, `headersHelper`, `timeout`, `alwaysLoad` (OAuth not supported)
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
@@ -47,7 +50,11 @@
 - Authentication errors and 404s are not retried (require config change)
 - Stdio servers are not auto-reconnected
 - `MCP_TIMEOUT` env var sets startup timeout (e.g. `MCP_TIMEOUT=10000`)
+- `MCP_TOOL_TIMEOUT` env var sets per-call execution timeout for all servers; individual servers can override with per-server `timeout` field (milliseconds)
+- Per-server `timeout` field in `.mcp.json` sets tool execution timeout (milliseconds), overriding `MCP_TOOL_TIMEOUT`; values below 1000 fall through to default; wall-clock limit that progress notifications don't extend
+- `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` env var sets idle-window timeout (default 5 minutes for HTTP/SSE/WebSocket/connectors, 30 minutes for stdio); tool calls with no response or progress for this window abort with error; set to `0` to disable (v2.1.187+)
 - `MCP_CONNECTION_NONBLOCKING=1` lets other servers connect in background; servers with `alwaysLoad: true` still block startup up to 5 s
+- `CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS` env var sets when tool calls in main conversation move to background (default 2 minutes); set to `0` to disable; `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all backgrounding; backgrounded calls continue executing in `/tasks`; wall-clock and idle timeouts still apply (v2.1.212+)
 - MCP tool output > 10,000 tokens triggers a warning; default cap is 25,000 tokens, raise via `MAX_MCP_OUTPUT_TOKENS`
 - Server-side tool authors can set `_meta["anthropic/maxResultSizeChars"]` (up to 500,000) to opt individual tools out of the persist-to-disk threshold for text content
 - Image content is always subject to `MAX_MCP_OUTPUT_TOKENS`
@@ -103,3 +110,4 @@
 - Do not invoke `mcp_tool` hook events from `SessionStart` / `Setup` — MCP servers may not be connected yet
 - Do not write secrets into `.mcp.json` for project-scope sharing — use env var expansion (`${API_KEY}`) so secrets stay out of version control
 - Do not invoke `headersHelper` from a project- or local-scope config without the user trusting the workspace first; the helper runs arbitrary shell
+- Do not use `${user_config.*}` in headersHelper (plugin-provided MCP servers) — shell-injection risk since the command runs through a shell; put user config values in headers field instead or have the helper script read them from environment (v2.1.207+)

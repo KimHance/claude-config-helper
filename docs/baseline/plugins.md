@@ -12,6 +12,7 @@
 - Standalone vs plugin: standalone (`.claude/<dir>/`) is for personal / project-only / quick experiments, with plain skill names; plugin is for sharing, multi-project reuse, versioning, marketplace distribution, with namespaced skill names
 - Plugins are discovered through marketplaces (registered separately) or direct local/url loading via `--plugin-dir <path>` or `--plugin-url <archive-url>`
 - The `/plugin` slash command manages installation, enabling/disabling, listing, and updates
+- The `claude plugin init <name>` command scaffolds a new plugin in `~/.claude/skills/` with a `.claude-plugin/plugin.json` manifest and starter `SKILL.md` file; it loads automatically each session as `<name>@skills-dir` without requiring marketplace registration
 - After enabling/disabling a plugin or editing plugin files, run `/reload-plugins` to apply changes without restarting
 - The `enabledPlugins` settings key (`{"<plugin>@<marketplace>": true|false}`) is what actually turns plugins on/off; can live in user, project, local, or managed settings
 - Local copy via `--plugin-dir` takes precedence over an installed plugin of the same name for that session, except when force-enabled in managed settings
@@ -20,12 +21,14 @@
 ## Advanced
 - Plugin directory structure: `.claude-plugin/plugin.json` (manifest), `skills/` (each skill as `<name>/SKILL.md`), `commands/` (legacy flat MD; new plugins use `skills/`), `agents/` (subagent definitions), `hooks/hooks.json` (event handlers), `.mcp.json` (MCP servers), `.lsp.json` (LSP servers), `monitors/monitors.json` (background monitors), `bin/` (executables added to Bash `PATH` while plugin enabled), `settings.json` (default plugin settings)
 - Only `plugin.json` belongs inside `.claude-plugin/`; everything else (`skills/`, `agents/`, `hooks/`, `commands/`, `.mcp.json`, etc.) lives at plugin root
+- A plugin that ships exactly one skill can place `SKILL.md` directly at the plugin root instead of creating a `skills/` directory; Claude Code loads it as a single skill and uses the frontmatter `name` field for the skill name
 - Plugin manifest is **optional** — if `.claude-plugin/plugin.json` is absent, components are auto-discovered in default locations and the plugin name is derived from the directory name
 - Plugin manifest schema (`plugin.json`) full field list: `name`, `version`, `description`, `author` (object: `name`/`email`/`url`), `homepage`, `repository`, `license`, `keywords` (array), `skills` (component path override), `commands` (override), `agents` (override), `hooks` (override), `mcpServers` (override), `outputStyles` (override), `lspServers` (override), `experimental.themes`, `experimental.monitors`, `dependencies` (string or `{name, version}` entries)
 - `version` field absent + git distribution → every commit counts as a new version; setting `version` makes updates explicit
 - Plugin install scopes (where `enabledPlugins` is recorded): `user` (default, `~/.claude/settings.json`), `project` (`.claude/settings.json`), `local` (`.claude/settings.local.json`, gitignored), `managed` (managed settings, read-only)
 - Plugin `settings.json` (plugin root): currently only `agent` and `subagentStatusLine` keys honored; `agent` activates one of the plugin's custom agents as the main thread system prompt
 - Plugin agent supported frontmatter fields: `name`, `description`, `model`, `effort`, `maxTurns`, `tools`, `disallowedTools`, `skills`, `memory`, `background`, `isolation` (`"worktree"` only); `mcpServers` frontmatter are now loaded for main-thread agent sessions via `--agent`
+- Plugin agent and skill frontmatter accept `yes`/`no`/`on`/`off`/`1`/`0` (case-insensitive) as boolean values, in addition to `true`/`false`
 - Plugin monitors require Claude Code v2.1.105 or later
 - Plugin monitor required fields: `name`, `command`, `description`; optional: `when` (`"always"` default, or `"on-skill-invoke:<skill-name>"`)
 - LSP server required fields: `command`, `extensionToLanguage`; optional: `args`, `transport` (`stdio`/`socket`), `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash`, `maxRestarts`
@@ -42,6 +45,7 @@
 - Force-enabled plugins: managed settings can pin a plugin to enabled; users cannot override; force-enabled plugins' hooks are exempt from `allowManagedHooksOnly`
 - Plugin trust dialog: shown the first time a plugin is installed, listing what it bundles and asking for explicit trust before activation
 - Testing flags: `--plugin-dir <local>` for development; `--plugin-url <archive-zip-url>` for one-session loading from a remote archive (e.g., CI build artifact); both can be repeated for multiple plugins; if the fetch or archive validation fails, Claude Code reports a plugin load error and starts without the plugin
+- The `claude plugin validate` command checks local plugins for configuration errors and required fields before distribution or submission
 - Convert standalone → plugin: copy `.claude/commands/` `agents/` `skills/` into the plugin dir; move `hooks` from `settings.json` into `hooks/hooks.json` (same JSON shape); remove duplicates from `.claude/` after testing
 
 ## Recommended
@@ -53,9 +57,11 @@
 - Test with `--plugin-dir ./local-copy` while iterating; reload with `/reload-plugins` instead of restarting
 - For team-internal plugins, host the marketplace in a private repo and add via `extraKnownMarketplaces`
 - Bundle a `README.md` with install + usage instructions before sharing
+- Run `claude plugin validate` locally before sharing to ensure the plugin configuration is correct
 - Prefer official LSP plugins for common languages; only ship a custom `.lsp.json` for languages without an official plugin
 - For org-wide enforcement, combine `strictKnownMarketplaces` + force-enabled plugins in managed `enabledPlugins` so users can't add unapproved sources
 - Use `--plugin-url` only for archives you control or trust — same trust considerations as any plugin source
+- Submit plugins for distribution via official Anthropic marketplaces: `claude-plugins-official` (Anthropic-curated) or `claude-community` (public community submissions); use submission forms at claude.ai or platform.claude.com
 - After conversion from standalone, delete the original `.claude/` files to avoid duplicate-name resolution surprises
 - Keep `commands/` only for legacy migration; author new plugin extensions as `skills/`
 

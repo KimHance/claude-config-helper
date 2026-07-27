@@ -15,9 +15,11 @@
 - Automatic timestamped backups are created for settings files; the 5 most recent are retained
 - The settings JSON does not allow comments (standard JSON, not JSONC)
 - Schema may lag the latest CLI; warnings on recent fields don't invalidate the config
+- Most settings take effect immediately when the file is saved; `model` and `outputStyle` require running `/clear` or restarting Claude Code to take effect
+- Project `.claude/settings.json` files must pass workspace trust verification before their settings apply; local settings (`.claude/settings.local.json`) do not require trust
 
 ## Advanced
-- Core model/behavior keys: `agent`, `model`, `availableModels`, `modelOverrides`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`
+- Core model/behavior keys: `agent`, `model`, `advisorModel`, `availableModels`, `enforceAvailableModels`, `modelOverrides`, `fallbackModel`, `effortLevel`, `alwaysThinkingEnabled`, `outputStyle`, `fastMode`
 - Permissions keys: `permissions` (object), `allowManagedPermissionRulesOnly` (managed), `disableBypassPermissionsMode`
 - File/directory access keys: `additionalDirectories`, `claudeMdExcludes`, `respectGitignore`, `fileSuggestion`
 - Memory keys: `autoMemoryEnabled`, `autoMemoryDirectory` (latter only honored from managed/user/`--settings`, never from project/local)
@@ -25,15 +27,15 @@
 - API/credentials keys: `apiKeyHelper`, `awsAuthRefresh`, `awsCredentialExport`, `gcpAuthRefresh`, `otelHeadersHelper`
 - Environment keys: `env` (object of strings), `defaultShell` (`bash`/`powershell`)
 - Sandbox: `sandbox` (object — see sandbox sub-shape)
-- Terminal/UI: `tui` (`fullscreen`/`default`), `autoScrollEnabled`, `editorMode` (`normal`/`vim`), `viewMode` (`default`/`verbose`/`focus`), `preferredNotifChannel`, `showTurnDuration`, `showThinkingSummaries`, `spinnerTipsEnabled`, `spinnerTipsOverride`, `spinnerVerbs`, `syntaxHighlightingDisabled`, `prefersReducedMotion`, `terminalProgressBarEnabled`
-- Git keys: `attribution` (object with `commit` and `pr` strings; empty string hides), `includeGitInstructions`
+- Terminal/UI: `tui` (`fullscreen`/`default`), `autoScrollEnabled`, `editorMode` (`normal`/`vim`), `vimInsertModeRemaps`, `viewMode` (`default`/`verbose`/`focus`), `preferredNotifChannel`, `showTurnDuration`, `showThinkingSummaries`, `spinnerTipsEnabled`, `spinnerTipsOverride`, `spinnerVerbs`, `syntaxHighlightingDisabled`, `prefersReducedMotion`, `terminalProgressBarEnabled`, `axScreenReader`, `emojiCompletionEnabled`
+- Git keys: `attribution` (object with `commit`, `pr`, and `sessionUrl` strings; empty strings hide), `includeGitInstructions`
 - Plugin keys: `enabledPlugins` (`{"plugin@marketplace": bool}`), `extraKnownMarketplaces`, `strictKnownMarketplaces` (managed), `blockedMarketplaces` (managed), `allowedChannelPlugins` (managed), `pluginTrustMessage` (managed)
 - Hooks keys: `hooks` (object), `disableAllHooks`, `allowManagedHooksOnly` (managed), `allowedHttpHookUrls`, `httpHookAllowedEnvVars`
 - MCP keys: `allowedMcpServers` (managed), `deniedMcpServers` (managed), `allowManagedMcpServersOnly` (managed), `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `disabledMcpjsonServers`
 - Subagent/team keys: `agent`, `teammateMode` (`auto`/`in-process`/`tmux`)
 - Update channel keys: `autoUpdatesChannel` (`stable`/`latest`), `minimumVersion`, `DISABLE_AUTOUPDATER` env equivalent
 - Plan keys: `plansDirectory`, `useAutoModeDuringPlan`, `showClearContextOnPlanAccept`
-- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
+- Auto mode keys: `autoMode` (with `environment`/`allow`/`soft_deny`/`hard_deny`, `classifyAllShell`; include `"$defaults"` to inherit), `disableAutoMode` (`"disable"`), `fastModePerSessionOptIn`
 - Voice keys: `voice` (`enabled`/`mode`/`autoSubmit`), `language`
 - Channels keys: `channelsEnabled` (managed), `companyAnnouncements` (array)
 - Telemetry keys: `feedbackSurveyRate` (0-1), `awaySummaryEnabled`
@@ -41,7 +43,8 @@
 - URL/template keys: `prUrlTemplate` (placeholders `{host}`, `{owner}`, `{repo}`, `{number}`, `{url}`)
 - Status line: `statusLine` (`{type: "command", command: "..."}`); script receives `CLAUDE_PROJECT_DIR`
 - Skills: `skillOverrides` (v2.1.129+, values `on`/`name-only`/`user-invocable-only`/`off`), `disableSkillShellExecution`
-- Sandbox/security: `sandbox`, `disableSkillShellExecution`; sandbox filesystem/network sub-keys include `bwrapPath` and `socatPath` to specify custom bubblewrap/socat binary locations (Linux/WSL)
+- Workflow & Feature keys: `workflowSizeGuideline` (small/medium/large/unrestricted), `respondToBashCommands` (default: true)
+- Sandbox/security: `sandbox`, `disableSkillShellExecution`; sandbox filesystem/network sub-keys include `bwrapPath` and `socatPath` to specify custom bubblewrap/socat binary locations (Linux/WSL); additionally includes `filesystem.disabled` (skip isolation), `allowAppleEvents` (allow Apple Events on macOS), `credentials` (block credential file reads), `network.strictAllowlist` (deny non-allowlisted hosts without prompting)
 - Deep links / remote control: `disableDeepLinkRegistration` (`"disable"`), `disableRemoteControl` (v2.1.128+)
 - Session keys: `cleanupPeriodDays` (default 30, min 1), `skipWebFetchPreflight`
 - Windows-only managed: `wslInheritsWindowsSettings`
@@ -55,11 +58,11 @@
 - Managed settings delivery: server (Anthropic admin console), MDM/OS policies (macOS plist `com.anthropic.claudecode`, Windows registry `HKLM\SOFTWARE\Policies\ClaudeCode` or `HKCU` for user-level), file-based (`/Library/Application Support/ClaudeCode/managed-settings.json` macOS, `/etc/claude-code/managed-settings.json` Linux/WSL, `C:\Program Files\ClaudeCode\managed-settings.json` Windows v2.1.75+), drop-in directory `managed-settings.d/*.json` (alphabetic merge, numeric prefixes for ordering)
 - Within the managed tier, precedence is server > MDM/OS > file-based
 - `forceRemoteSettingsRefresh` (managed) blocks CLI startup until remote settings fetched (fail-closed)
-- Sandbox object (macOS/Linux/WSL2): `enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed`, `excludedCommands`, `allowUnsandboxedCommands`, plus `filesystem.{allowWrite, denyWrite, denyRead, allowRead, allowManagedReadPathsOnly}`, `network.{allowedDomains, deniedDomains, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowManagedDomainsOnly, httpProxyPort, socksProxyPort}`, `enableWeakerNestedSandbox`, `enableWeakerNetworkIsolation`
+- Sandbox object (macOS/Linux/WSL2): `enabled`, `failIfUnavailable`, `autoAllowBashIfSandboxed`, `excludedCommands`, `allowUnsandboxedCommands`, `allowAppleEvents`, `credentials`, plus `filesystem.{allowWrite, denyWrite, denyRead, allowRead, allowManagedReadPathsOnly, disabled}`, `network.{allowedDomains, deniedDomains, allowUnixSockets, allowAllUnixSockets, allowLocalBinding, allowMachLookup, allowManagedDomainsOnly, httpProxyPort, socksProxyPort, strictAllowlist}`, `enableWeakerNestedSandbox`, `enableWeakerNetworkIsolation`
 - Sandbox path prefixes: `/abs`, `~/path` (home), `./path` or `path` (project root in non-user settings; `~/.claude` in user settings)
 - Some keys live in `~/.claude.json` (the global config, not `settings.json`): `autoConnectIde`, `autoInstallIdeExtension`, `externalEditorContext`; this file also holds OAuth session, per-project allowed tools, MCP user/local server configs, caches
 - SSH config (`sshConfigs[]`) is read only from managed and user settings, never from project/local
-- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN`
+- ENV vars that override settings: `CLAUDE_CODE_DISABLE_THINKING`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY`, `CLAUDE_CODE_ENABLE_AWAY_SUMMARY`, `CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`, `ANTHROPIC_MODEL`, `CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_NO_FLICKER`, `CLAUDE_CODE_USE_POWERSHELL_TOOL`, `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS`, `CLAUDE_CODE_SKIP_PROMPT_HISTORY`, `CLAUDE_CODE_API_KEY_HELPER_TTL_MS`, `CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS`, `DISABLE_AUTOUPDATER`, `CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN`, `CLAUDE_CODE_ENABLE_TELEMETRY`, `CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING`, `CLAUDE_CODE_DISABLE_ARTIFACT`, `CLAUDE_CODE_DISABLE_AGENT_VIEW`, `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`, `CLAUDE_CODE_DISABLE_WORKFLOWS`, `CLAUDE_CODE_PROCESS_WRAPPER`, `CLAUDE_CLIENT_PRESENCE_FILE`, `CLAUDE_CODE_FORWARD_SUBAGENT_TEXT`, `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION`, `CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION`, `CLAUDE_CODE_MCP_AUTO_BACKGROUND_MS`, `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`, `CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH`, `OTEL_LOG_ASSISTANT_RESPONSES`, `FORCE_HYPERLINK`, `NO_COLOR`, `FORCE_COLOR`, `OTEL_METRICS_EXPORTER`, `MAX_THINKING_TOKENS`, `DISABLE_AUTO_COMPACT`, `DISABLE_DOCTOR_COMMAND`
 
 ## Recommended
 - Use `.claude/settings.local.json` (gitignored) for personal overrides without polluting the team's project settings

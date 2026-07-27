@@ -29,7 +29,7 @@
 - When `memory` is enabled, the subagent's prompt includes the first 200 lines or 25KB of `MEMORY.md`, and Read/Write/Edit tools are auto-enabled
 - `isolation: worktree` runs the subagent in a temporary git worktree; the worktree is auto-cleaned if the subagent makes no changes
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
-- `background: true` always runs the subagent as a background task; default false
+- `background: true` always runs the subagent as a background task; as of v2.1.198, subagents run in the background by default (Claude chooses foreground only when needing immediate results)
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
 - Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
@@ -39,7 +39,7 @@
 - `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body
 - Disable specific subagents via `permissions.deny: ["Agent(name)"]` in settings, or `--disallowedTools "Agent(name)"`
 - Restrict which subagents an agent can spawn via `tools: Agent(worker, researcher)` (allowlist); `Agent` alone allows any; omitting `Agent` disallows all
-- This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents
+- This restriction applies only to agents running as main thread (`claude --agent`); subagents can spawn subagents of their own up to a depth limit (default 3 levels deep)
 - Subagent file edits to disk require session restart; `/agents` interface changes apply immediately
 - Resolution order for the model: `CLAUDE_CODE_SUBAGENT_MODEL` env var > per-invocation `model` parameter > frontmatter `model` > main conversation's model
 - Subagents support hooks `PreToolUse`, `PostToolUse`, and `Stop` (converted to `SubagentStop` at runtime); main session can also subscribe via `SubagentStart`/`SubagentStop` in `settings.json`
@@ -48,7 +48,10 @@
 - Subagents support auto-compaction at ~95% capacity by default; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` lowers the threshold
 - Foreground subagents block main conversation; background subagents pre-approve permissions before launch and auto-deny anything not pre-approved
 - `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; Ctrl+B backgrounds a running task
-- Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks
+- `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` (v2.1.219+) controls how many layers deep subagents can nest; default is 3, set to 1 to disable nesting
+- `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` (v2.1.212+) caps total subagent spawns per session; default 200, override to adjust the limit
+- `/fork` command (v2.1.212+) copies the current conversation into a new background session with inherited context
+- `/subtask` command (v2.1.212+) launches an in-session subagent; replaces the pre-v2.1.212 `/fork` in-session behavior
 - Resume an existing subagent via `SendMessage` tool with the agent ID; requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 - MCP servers can be scoped to subagents via the `mcpServers` field; the `alwaysLoad` option on an MCP server ensures all its tools are available to subagents without tool-search deferral
 
@@ -72,7 +75,7 @@
 - Use `@-mention` to guarantee a specific subagent runs for one task instead of relying on automatic delegation
 
 ## Anti-patterns
-- Subagents cannot spawn other subagents; nested delegation is unsupported — use Skills or chain from main conversation instead
+- Subagents can spawn subagents up to a depth limit (default 3 layers deep); at the depth limit, Claude Code withholds the `Agent` tool, so the subagent completes its task itself without further delegation — use depth-limiting to prevent excessive nesting
 - Do not use subagents for tasks needing frequent back-and-forth or iterative refinement; main conversation is better
 - Do not assume a subagent inherits skills from the parent; always list them explicitly in `skills` field
 - Do not edit `.claude/agents/` files directly during a session expecting changes to apply; restart, or use `/agents`

@@ -19,7 +19,7 @@
 ## Advanced
 - Permission modes (`permissions.defaultMode`): `default` (prompt first use), `acceptEdits` (auto-accept edits + filesystem cmds in cwd / additionalDirectories), `plan` (read-only exploration), `auto` (research preview classifier-based with optional hard-deny rules), `dontAsk` (auto-deny unless pre-allowed), `bypassPermissions` (skip all prompts; root rm -rf still prompts)
 - `settings.autoMode.hard_deny` list: auto mode classifier rules that block unconditionally regardless of user intent or allow exceptions; any rule in this list blocks the action before the classifier evaluates it
-- `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.claude`/`.vscode`/`.idea`/`.husky`; circuit breaker: `rm -rf /` and `rm -rf ~` still prompt
+- `bypassPermissions` is the danger mode — also auto-allows writes to `.git`/`.config/git`/`.claude`/`.vscode`/`.idea`/`.husky`/`.cargo`/`.devcontainer`/`.yarn`/`.mvn`; circuit breaker (v2.1.208+): `rm -rf /` and `rm -rf ~` still prompt, including when the command contains command substitution (`$(...)` or backticks) or process substitution (`<(...)`)
 - `permissions.disableBypassPermissionsMode: "disable"` blocks bypass mode and `--dangerously-skip-permissions` flag
 - `permissions.disableAutoMode: "disable"` blocks auto mode activation
 - `Bash(*)` ≡ `Bash` (matches all bash); wildcard `*` allowed at any position
@@ -30,8 +30,8 @@
 - Bash process wrappers stripped before matching: `timeout`, `time`, `nice`, `nohup`, `stdbuf`; bare `xargs` (no flags) also stripped
 - Environment runners NOT stripped: `direnv exec`, `devbox run`, `mise exec`, `npx`, `docker exec` — write specific rules like `Bash(devbox run npm test)`
 - Exec wrappers always prompt (never auto-approved by prefix): `watch`, `setsid`, `ionice`, `flock`; same for `find -exec`/`-delete`
-- Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `head`, `tail`, `grep`, `find`, `wc`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
-- Unquoted globs allowed for fully-read-only commands (`ls *.ts`); commands with write/exec flags (`find`, `sort`, `sed`, `git`) still prompt with unquoted glob
+- Read-only Bash commands run without prompt in every mode: `ls`, `cat`, `echo`, `pwd`, `head`, `tail`, `grep`, `find`, `wc`, `which`, `diff`, `stat`, `du`, `cd`, read-only forms of `git`
+- Unquoted globs allowed for fully-read-only commands (`ls *.ts`); commands with write/exec flags (`find`, `sort`, `sed`, `git`) still prompt with unquoted glob; additionally, read-only commands still prompt for: `docker` with daemon-redirect flags (`-H`, `--context`, `--url`, `--connection`), `file` with path-opening flags (`-m`/`--magic-file`, `-f`/`--files-from`), network paths on Windows (UNC paths), and commands longer than 10,000 characters
 - `cd` into cwd / `additionalDirectories` is read-only; compound `cd packages/api && ls` runs without prompt; `cd` + `git` always prompts
 - PowerShell rules use same shape as Bash; aliases canonicalized (so `Get-ChildItem` rule also matches `gci`/`ls`/`dir`); case-insensitive; AST parsed; pipeline `|`, `;`, and (PS7+) `&&`/`||` split compound commands
 - Read/Edit specifier patterns (gitignore-spec): `//abs/path` (filesystem-absolute), `~/path` (home), `/path` (project-root-relative), `path` or `./path` (cwd-relative)

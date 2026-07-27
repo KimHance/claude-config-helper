@@ -17,33 +17,43 @@
 - The `/help` command lists what is available in the current environment
 
 ## Advanced
+- A command is a single token starting with `/` typed at the start of a message; text after the command name is passed as arguments
 - `/add-dir <path>` — add a working directory for file access during session; most `.claude/` config not loaded from added dirs (skills/ is the exception, and CLAUDE.md only with `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`)
+- `/advisor [model|off]` — enable/disable the advisor tool (consults second model for guidance)
 - `/agents` — manage subagent configurations (Running / Library tabs)
 - `/autofix-pr [prompt]` — spawn a Claude Code on the web session that watches the PR for the current branch and pushes fixes; requires `gh` CLI
 - `/batch <instruction>` — bundled Skill; orchestrates large-scale parallel changes across the codebase via worktree-isolated background agents
-- `/branch [name]` (alias `/fork`) — branch the current conversation; `/fork` becomes a forked-subagent spawn when `CLAUDE_CODE_FORK_SUBAGENT=1`; success message includes the new branch's session ID for `/resume`
+- `/background [prompt]` (alias `/bg`) — detach session to run as background agent; frees terminal for other work
+- `/branch [name]` — branch the current conversation; success message includes the new branch's session ID for `/resume`
 - `/btw <question>` — quick side question that doesn't add to the conversation history
+- `/bug [report]` (alias `/share`) — report bug or share conversation with consent
+- `/cd <path>` — move session to new working directory
 - `/chrome` — configure Claude in Chrome integration
 - `/claude-api [migrate|managed-agents-onboard]` — bundled Skill; loads Claude API reference for the project's language; `migrate` upgrades existing API code to a newer model
 - `/clear [name]` (aliases `/reset`, `/new`) — start a new conversation; previous one stays in `/resume`; pass a name to label the previous conversation in the `/resume` picker
 - `/color [color|default]` — set prompt-bar color (`red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan`); use `default` to reset, or run with no argument to pick a random color; syncs to claude.ai/code under Remote Control
 - `/compact [instructions]` — summarize conversation to free context; optional focus instructions
-- `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.)
+- `/config [key=value ...]` (alias `/settings`) — open Settings UI (theme, model, output style, etc.); or set any setting directly from prompt (e.g., `/config thinking=false`)
 - `/context` — visualize context window usage
 - `/copy [N]` — copy assistant response (Nth-latest) to clipboard; press `w` to save to file
 - `/cost` — alias for `/usage`
+- `/dataviz [request]` — bundled Skill; design guidance for charts, graphs, dashboards
 - `/debug [description]` — bundled Skill; enable debug logging for the session and analyze the debug log
+- `/deep-research <question>` — bundled Workflow; fan out web searches, fetch and cross-check sources, synthesize report
+- `/design-login` — authorize design-system access for `/design-sync`
+- `/design-sync [hint]` — bundled Skill; convert repo's React design system and upload to Claude Design
 - `/desktop` (alias `/app`) — continue session in Claude Code Desktop app (macOS/Windows)
 - `/diff` — interactive diff viewer for uncommitted changes and per-turn diffs
 - `/doctor` — diagnose Claude Code install/settings; press `f` to have Claude fix issues
-- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately; without an argument, opens an interactive slider
+- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`/`ultracode`); takes effect immediately; without an argument, opens an interactive slider
 - `/exit` (alias `/quit`) — exit CLI
 - `/export [filename]` — export conversation as plain text
 - `/extra-usage` — configure extra usage to keep working past rate limits
 - `/fast [on|off]` — toggle fast mode
-- `/feedback [report]` (alias `/bug`) — submit feedback
 - `/fewer-permission-prompts` — bundled Skill; scans transcripts and adds an allowlist to project settings
 - `/focus` — toggle focus view (last prompt + tool summary + final response); fullscreen-only; persists per `viewMode`
+- `/fork [prompt]` — copy conversation into new background session; keep working in current session
+- `/goal [condition|clear]` — set goal: Claude keeps working until condition met
 - `/heapdump` — write JS heap snapshot to `~/Desktop` for diagnosing memory issues
 - `/help` — show help and available commands
 - `/hooks` — view hook configurations
@@ -87,6 +97,7 @@
 - `/status` — open Settings UI on Status tab; usable while Claude is responding
 - `/statusline` — configure status line; auto-configures from shell prompt without args
 - `/stickers` — order Claude Code stickers
+- `/subtask` — launch in-session subagent; provides the in-session subagent functionality previously handled by `/fork`
 - `/tasks` (alias `/bashes`) — list/manage background tasks
 - `/team-onboarding` — generate team onboarding guide from past 30 days of usage
 - `/teleport` (alias `/tp`) — pull a Claude Code web session into this terminal (claude.ai subscription required)
@@ -109,7 +120,7 @@
 - Use `/permissions` to manage allow/ask/deny rules interactively rather than hand-editing settings
 - Use `/skills` and `/agents` to inspect what Claude can currently invoke; `/skills` also exposes visibility cycling for skillOverrides
 - Use `/btw` for quick side questions that should not pollute history (no tool access either)
-- Use `/branch` (or `/fork` when `CLAUDE_CODE_FORK_SUBAGENT` unset) to preserve a snapshot of the conversation before a risky direction
+- Use `/branch` to preserve a snapshot of the conversation before a risky direction, or `/fork` to copy to a background session where parallel work can continue
 - Use `/rewind` (alias `/checkpoint`, `/undo`) to revert conversation or code state — preferred over manually re-typing
 - For team onboarding, run `/team-onboarding` to generate a paste-ready guide from your last 30 days
 - For deep code review prefer `/ultrareview` over `/review` when willing to trade time and tokens for thoroughness
@@ -122,7 +133,7 @@
 - Do not assume every command listed in the docs is available — availability depends on platform, plan, and env vars; `/upgrade`, `/desktop`, `/setup-bedrock`, `/setup-vertex`, `/passes`, `/privacy-settings` only show conditionally
 - Do not type a command in the middle of a message — only the start of a message is recognized as a command boundary
 - Do not assume `/clear` and `/compact` do the same thing — `/clear` starts a new conversation, `/compact` summarizes in place
-- Do not assume `/fork` always branches the conversation — when `CLAUDE_CODE_FORK_SUBAGENT=1`, `/fork` spawns a forked subagent instead of conversation branching
+- Do not confuse `/fork` and `/branch` — `/fork` copies conversation to a background session, `/branch` creates a conversation branch in the same session
 - Do not author new custom commands as `.claude/commands/<name>.md` — that path still works but skills (`.claude/skills/<name>/SKILL.md`) are the recommended path going forward
 - Do not assume `/btw` has tool access — it answers from existing context only and the answer is discarded, not appended to history
 - Do not run `/ultrareview` from a non-git directory or without authorization — it bills against extra usage after the free trial window
