@@ -18,17 +18,21 @@
 - !`command` blocks execute at skill load time, output replaces placeholder
 - Multi-line variant using ```! fenced code blocks for multiple commands
 - ${CLAUDE_SKILL_DIR} resolves to skill directory path
+- ${CLAUDE_PROJECT_DIR} resolves to project root directory, useful for referencing project-local scripts or files independently of where skill is installed
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- Boolean frontmatter fields accept yes, no, on, off, 1, 0 (case-insensitive) in addition to true/false
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active; restriction clears when user sends next message
 - model field overrides active model for skill duration
 - effort field overrides session effort level
-- context: fork runs skill in isolated subagent context
+- context: fork runs skill in isolated subagent context, runs in background by default so user keeps working; set background: false to wait for result in same turn
+- background field controls whether forked skill runs in background (default: true) or blocks until completion
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
 - hooks field scopes hooks to skill lifecycle
 - paths field uses glob patterns to limit auto-invocation to matching files
@@ -48,6 +52,9 @@
 - Skill+context:fork vs subagent: delegate in skill vs define subagent separately
 - Skill vs Hook: instructions vs deterministic lifecycle automation
 - Plugin skill namespace prevents collisions with project/personal skills
+- metadata field allows free-form YAML map for key-value data such as entitlement or catalog fields; Claude Code doesn't act on contents
+- compatibility field specifies environment requirements (products, prerequisites); Claude Code accepts but doesn't act on it
+- license field documents skill license (Agent Skills spec); Claude Code accepts but doesn't act on it
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
