@@ -21,18 +21,24 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- Boolean fields in frontmatter accept yes, no, on, off, 1, 0 in any case, plus true and false (v2.1.218+)
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes tools from Claude's available pool while skill is active; use for autonomous skills that should never call certain tools; space/comma-separated string or YAML list
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
+- background: false waits for forked subagent's result in the turn that invoked the skill instead of running in background; only applies with context: fork; default true; requires v2.1.218+
 - hooks field scopes hooks to skill lifecycle
 - paths field uses glob patterns to limit auto-invocation to matching files
 - shell field sets shell to bash (default) or powershell for !`command` execution
+- metadata: free-form YAML map for custom key-value data read by tooling; Claude Code ignores contents
+- license: License covering the skill (Agent Skills spec); Claude Code accepts the field but doesn't act on it
+- compatibility: Environment requirements for the skill as defined by Agent Skills spec; string up to 500 characters; Claude Code accepts the field but doesn't act on it
 - Skills can include supporting files (template.md, examples/, scripts/)
 - Skills location priority: Enterprise > Personal (~/.claude/skills/) > Project (.claude/skills/) > Plugin
 - Plugin skills namespaced as /plugin-name:skill-name to prevent conflicts; the `name` frontmatter field determines the invocation name, allowing stable names across install methods
