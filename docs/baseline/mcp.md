@@ -63,7 +63,8 @@
 - `mcp__<server>` matches all tools from that server; `mcp__<server>__<tool>` matches a specific tool
 - Channel-mode servers, prompt commands, and resources are normalized so that spaces become underscores in identifiers
 - Managed MCP option 1 (`managed-mcp.json`): exclusive control, fixed server set, users cannot add their own; locations: macOS `/Library/Application Support/ClaudeCode/managed-mcp.json`, Linux/WSL `/etc/claude-code/managed-mcp.json`, Windows `C:\Program Files\ClaudeCode\managed-mcp.json`
-- Managed MCP option 2: policy-based via `allowedMcpServers` / `deniedMcpServers` in managed settings; entries match by `serverName`, `serverCommand` (exact array), or `serverUrl` (wildcard `*` supported)
+- Managed MCP option 2 (`managedMcpServers` setting): organizations can provision HTTP/SSE servers to all users via managed settings (v2.1.259+); server entries use the same shape as `.mcp.json`; command-based entries are skipped in managed deployment
+- Managed MCP option 3: policy-based via `allowedMcpServers` / `deniedMcpServers` in managed settings; entries match by `serverName`, `serverCommand` (exact array), or `serverUrl` (wildcard `*` supported); governs user-added servers only (v2.1.259+)
 - Allowlist behavior: undefined = no restriction, `[]` = full lockdown, list = only matching servers allowed
 - Denylist behavior: undefined or `[]` = nothing blocked, list = matching servers blocked across all scopes; denylist always takes absolute precedence over allowlist
 - Stdio servers must match `serverCommand` if any command entries exist in allowlist; remote servers must match `serverUrl` if any URL entries exist
@@ -83,7 +84,7 @@
 - Raise `MAX_MCP_OUTPUT_TOKENS` when working with servers that legitimately produce large outputs (database dumps, long reports)
 - Use `claude mcp serve` to expose Claude Code's tools to other MCP clients (e.g., Claude Desktop) for testing or cross-tool workflows
 - Reset stale project-scope approvals with `claude mcp reset-project-choices` after updating `.mcp.json`
-- For org rollouts, prefer `managed-mcp.json` (Option 1) when a fixed approved set is needed, or allow/denylists (Option 2) when users still need flexibility
+- For org rollouts, prefer `managed-mcp.json` (Option 1) when a fixed approved set is needed, or allow/denylists (Option 3) when users still need flexibility
 - Use URL wildcards (`https://*.internal.corp/*`) in `allowedMcpServers` to allow whole subdomains without listing each server
 - For server authors: include clear server instructions (under 2KB) so Tool Search can match user requests; truncation hides anything past the cap
 

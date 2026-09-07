@@ -15,11 +15,15 @@
 - Each subagent invocation creates a fresh context; subagent context does not persist across invocations unless resumed
 - Three explicit invocation patterns: natural language (Claude decides), @-mention (`@agent-<name>` or picker, guarantees that subagent), and session-wide via `--agent <name>` or `agent` setting
 - A subagent's `description` field combined with the user request decides automatic delegation; clear specific descriptions improve routing
+- Subagent file discovery is recursive, supporting subdirectories (e.g., `.claude/agents/review/security.md`)
+- Keep `name` values unique within the same directory; when duplicate names exist across nested directories, the definition closest to the working directory takes precedence
+- Claude Code watches `~/.claude/agents/` and `.claude/agents/` for changes; watching new directories requires a session restart
 
 ## Advanced
-- Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`
+- Optional frontmatter: `tools`, `disallowedTools`, `model`, `permissionMode`, `maxTurns`, `skills`, `mcpServers`, `hooks`, `memory`, `background`, `effort`, `isolation`, `color`, `initialPrompt`, `experimental`
 - `tools` is allowlist; `disallowedTools` is denylist; if both set, denylist applied first then allowlist resolved against the remainder
-- `model` accepts `sonnet`/`opus`/`haiku`/full model id (e.g. `claude-opus-4-7`)/`inherit`; defaults to `inherit`
+- `model` accepts `sonnet`/`opus`/`haiku`/`fable`/full model id (e.g. `claude-opus-4-7`)/`inherit`; defaults to `inherit`
+- Resolution order for the model: per-invocation `model` parameter > frontmatter `model` > `CLAUDE_CODE_SUBAGENT_MODEL` env var > main conversation's model; `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` (v2.1.257) overrides this entire order
 - `permissionMode` values: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`
 - `permissionMode` is ignored for plugin subagents (security)
 - `mcpServers` and `hooks` frontmatter are also ignored for plugin subagents (security)
@@ -31,7 +35,8 @@
 - `initialPrompt` is auto-submitted as the first user turn when the agent runs as the main session via `--agent` or `agent` setting
 - `background: true` always runs the subagent as a background task; default false
 - `color` accepts `red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan` for display in task list and transcript
-- Built-in subagents: Explore (Haiku, read-only), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
+- `experimental` field enables experimental options like `cacheTtl: 5m` or `1h` for prompt caching configuration
+- Built-in subagents: Explore (inherits model from main conversation capped at Opus on Claude API, read-only, supports "quick", "medium", "very thorough" throughness levels), Plan (inherits model, read-only, used in plan mode), general-purpose (all tools, inherits model), plus helpers `statusline-setup` (Sonnet) and `claude-code-guide` (Haiku)
 - Subagent scope priority: managed settings > `--agents` CLI flag > project `.claude/agents/` > user `~/.claude/agents/` > plugin `agents/` directory
 - Plugin subagents appear in `/agents` and are referenced as `<plugin-name>:<agent-name>`
 - `/agents` command opens a tabbed UI (Running / Library) for managing subagents; supports "Generate with Claude" to author the system prompt
@@ -39,18 +44,23 @@
 - `--agents '<JSON>'` CLI flag defines session-only subagents inline; supports the same fields as file-based, with `prompt` instead of markdown body
 - Disable specific subagents via `permissions.deny: ["Agent(name)"]` in settings, or `--disallowedTools "Agent(name)"`
 - Restrict which subagents an agent can spawn via `tools: Agent(worker, researcher)` (allowlist); `Agent` alone allows any; omitting `Agent` disallows all
-- This restriction applies only to agents running as main thread (`claude --agent`); subagents themselves cannot spawn other subagents
+- This restriction applies only to agents running as main thread (`claude --agent`); subagents can spawn other subagents up to 3 layers deep by default
+- Subagents can spawn subagents up to 3 layers deep by default; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=2` lowers this (or set to 1 to disable nesting); at depth limit the `Agent` tool is withheld (except forks)
+- Default 20 subagents can run concurrently; `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=50` increases this limit
 - Subagent file edits to disk require session restart; `/agents` interface changes apply immediately
-- Resolution order for the model: `CLAUDE_CODE_SUBAGENT_MODEL` env var > per-invocation `model` parameter > frontmatter `model` > main conversation's model
 - Subagents support hooks `PreToolUse`, `PostToolUse`, and `Stop` (converted to `SubagentStop` at runtime); main session can also subscribe via `SubagentStart`/`SubagentStop` in `settings.json`
 - Hooks receive the active effort level via `effort.level` JSON input field and `$CLAUDE_EFFORT` environment variable
 - Subagent transcripts persist at `~/.claude/projects/{project}/{sessionId}/subagents/agent-{agentId}.jsonl`, independent of main conversation, cleaned per `cleanupPeriodDays` (default 30)
 - Subagents support auto-compaction at ~95% capacity by default; `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` lowers the threshold
 - Foreground subagents block main conversation; background subagents pre-approve permissions before launch and auto-deny anything not pre-approved
 - `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` disables all background task functionality; Ctrl+B backgrounds a running task
-- Fork mode (experimental, `CLAUDE_CODE_FORK_SUBAGENT=1`, requires v2.1.117+): spawns a fork that inherits full conversation history, system prompt, tools, model; `/fork <directive>` triggers it; forks cannot spawn further forks
+- Fork mode spawns a fork that inherits full conversation history, system prompt, tools, model; `/subtask <directive>` (v2.1.212+, preferred) or `/fork <directive>` (v2.1.161-v2.1.211 alternative) triggers it; enabled by default in interactive sessions, disabled by default in non-interactive mode (`-p`) and Agent SDK; disable with `CLAUDE_CODE_DISABLE_FORK_MODE`; forks cannot spawn further forks
+- Subagents now fall back to the session's model chain if they encounter a 404 on their configured model (v2.1.248+)
 - Resume an existing subagent via `SendMessage` tool with the agent ID; requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 - MCP servers can be scoped to subagents via the `mcpServers` field; the `alwaysLoad` option on an MCP server ensures all its tools are available to subagents without tool-search deferral
+- Inline MCP server definitions in `.claude/agents/` require folder trust before loading (v2.1.238+)
+- `claude plugin validate .claude/agents` validates agent file parsing and frontmatter (v2.1.233+)
+- `/tasks` command displays the model and effort level each subagent ran on (v2.1.243+)
 
 ## Recommended
 - Design each subagent to excel at one specific task; write detailed `description` so Claude knows when to delegate
@@ -72,7 +82,6 @@
 - Use `@-mention` to guarantee a specific subagent runs for one task instead of relying on automatic delegation
 
 ## Anti-patterns
-- Subagents cannot spawn other subagents; nested delegation is unsupported — use Skills or chain from main conversation instead
 - Do not use subagents for tasks needing frequent back-and-forth or iterative refinement; main conversation is better
 - Do not assume a subagent inherits skills from the parent; always list them explicitly in `skills` field
 - Do not edit `.claude/agents/` files directly during a session expecting changes to apply; restart, or use `/agents`

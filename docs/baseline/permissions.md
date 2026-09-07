@@ -54,6 +54,21 @@
 - Managed-only permission policies: `allowManagedPermissionRulesOnly` (blocks user/project rule overrides), `allowManagedMcpServersOnly`, `allowManagedHooksOnly`, `allowedChannelPlugins`, `forceRemoteSettingsRefresh`, `pluginTrustMessage`, `sandbox.filesystem.allowManagedReadPathsOnly`, `sandbox.network.allowManagedDomainsOnly`, `strictKnownMarketplaces`, `blockedMarketplaces`, `wslInheritsWindowsSettings`, `channelsEnabled`
 - `disableBypassPermissionsMode` works from any scope — a user can lock themselves out
 - Sandbox interaction: when sandbox enabled with `autoAllowBashIfSandboxed: true` (default), sandboxed Bash runs without prompts even with `ask: Bash(*)`; explicit deny still applies; `rm`/`rmdir` against `/`, home, or critical system paths still prompts
+- `--permission-mode` flag: set permission mode at startup to `default`, `acceptEdits`, `plan`, `auto`, `dontAsk`, or `bypassPermissions` without changing settings files
+- `--permission-prompts none`: in headless/unattended environments, auto-deny tool calls that would normally prompt while keeping the active permission mode's rules in effect
+- `--restricted` flag: minimal permissions mode that disables Bash and WebFetch (except named in `--tools`), limits file tools to working directory only, refuses bypassPermissions, ignores user/project/local settings files
+- `blockReadsOutsideWorkingDirectories` setting: makes file tools refuse reads outside working directories and additional directories in every permission mode (including auto)
+- `--setting-sources` flag: controls which settings files apply (managed, user, local, project)
+- Auto mode Containment Escape rule: classifier now blocks cloud metadata-credential fetches and egress evasion attempts by default unless environment marks them expected
+- One-time prompt in auto mode for first file read outside working directories, with option to persistently block such reads via `blockReadsOutsideWorkingDirectories`
+- File tools (Read, Edit, Write) deny rules expanded scope: now cover files passed as option values (e.g., `--ignore-revs-file=.env`, `-f.env`), git diff and git grep operands, compound commands like `cd DIR && cat FILE`, and input redirects like `< file`
+- PreModelSwitch and PostModelSwitch hook events: hooks can block, confirm, or annotate model switches during a session
+- SessionStart resume hooks now receive session staleness information and estimated re-cache cost
+- New managed-only settings: `managedMcpServers` (HTTP/SSE MCP servers provided by organization), `modelPricing` (per-model rates for cost display and `/cost`), `modelPicker` (curated model list for `/model` command), `desktopSessionCleanupPeriodDays` (cap exemption for desktop sessions), `strictPluginOnlyCustomization` (locks MCP to plugin-only servers)
+- `allowedMcpServers` now governs only user-added servers; managed MCP servers load regardless; use `deniedMcpServers` to block specific servers
+- `managedSourcesBehavior: "merge"`: when set, sandbox credentials (`sandbox.credentials.awsPairs`) and ripgrep config taken whole from highest managed source instead of merged from multiple sources
+- Symlink security: file tools no longer follow symlinks that are swapped inside working directory after permission check
+- `--add-dir` refuses network paths (UNC shares, `/net/<host>` automounts) before accessing them
 
 ## Recommended
 - Use deny rules sparingly but decisively for secrets, credentials, and dangerous commands (`Read(./.env)`, `Read(./secrets/**)`, `Bash(curl *)`, `Bash(wget *)`)

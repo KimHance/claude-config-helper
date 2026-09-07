@@ -19,6 +19,7 @@
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
 - Managed policy CLAUDE.md cannot be excluded by user settings — it always applies
+- The `claudeMd` key in managed settings lets you put managed CLAUDE.md content directly inside `managed-settings.json` instead of deploying a separate file; as of v2.1.260, this setting no longer triggers the security approval dialog (hooks, shell-command, sandbox, and unsafe `env` settings still require approval)
 - Project CLAUDE.md may live at either `./CLAUDE.md` or `./.claude/CLAUDE.md`; both are picked up
 - `CLAUDE.local.md` exists per-worktree (since gitignored) — sharing personal instructions across worktrees requires importing from `~/.claude/`
 - `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5
