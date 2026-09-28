@@ -45,7 +45,7 @@
 - WebFetch alone does NOT prevent network access — Bash with `curl`/`wget` can still hit any URL; combine with Bash deny rules or sandbox
 - MCP rules: `mcp__<server>` matches all server tools; `mcp__<server>__*` wildcard same; `mcp__<server>__<tool>` specific tool
 - Agent rules: `Agent(name)` matches a named subagent (built-in or custom); add to deny array or use `--disallowedTools` flag
-- Skill rules: `Skill(name)` exact, `Skill(name *)` prefix-with-args
+- Skill rules: `Skill(name)` exact, `Skill(name *)` prefix-with-args; `Skill(anthropic-skills:*)` and `Skill(claude-ai:*)` allow rules cover only skills synced from claude.ai, not plugins or other skills with those names
 - `permissions.additionalDirectories` extends file access (not configuration discovery); files there follow the same permission rules as cwd
 - Configuration discovered from `--add-dir` directories: only skills (`.claude/skills/` with live reload), `enabledPlugins`/`extraKnownMarketplaces` from `.claude/settings.json`, and CLAUDE.md / `.claude/rules/` / `CLAUDE.local.md` only when `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`
 - Subagents, commands, output styles, hooks, and other settings are NOT loaded from `--add-dir`

@@ -7,29 +7,31 @@
 ## Fundamentals
 - MCP (Model Context Protocol) is an open standard that lets Claude Code connect to external tools, databases, and APIs through MCP servers
 - An MCP server exposes tools, prompts, and resources to Claude Code; tools become callable, prompts become slash commands, resources become `@` mentions
-- MCP servers connect via one of three transports: `stdio` (local process), `http` (remote, recommended), or `sse` (deprecated, use http)
+- MCP servers connect via one of four transports: `stdio` (local process), `http` (remote, recommended), `sse` (deprecated, use http), or `ws` (WebSocket, for remote servers that push events unprompted)
 - Three install methods: CLI (`claude mcp add`), `.mcp.json` file, or `claude mcp add-json` for raw JSON
 - Three install scopes: `local` (default, single project, private, stored in `~/.claude.json`), `project` (single project, shared via `.mcp.json` in repo root), `user` (all projects, private, stored in `~/.claude.json`)
 - MCP tools appear to Claude as `mcp__<server>__<tool>` and are subject to the same permission system as built-in tools
 - The `/mcp` slash command opens a panel that lists configured servers, their connection state, tool counts, and supports OAuth login / clearing auth / retry
-- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, and `claude mcp serve`
-- The reserved server name is `workspace` — defining a server with that name causes Claude Code to skip it at load time and warn
+- The CLI surface is `claude mcp add`, `claude mcp add-json`, `claude mcp add-from-claude-desktop`, `claude mcp list`, `claude mcp get <name>`, `claude mcp remove <name>`, `claude mcp login`, `claude mcp logout`, and `claude mcp serve`
+- Reserved server names include `workspace`, `claude-in-chrome`, `computer-use`, `Claude Preview`, and `Claude Browser` — defining a server with any of these names causes Claude Code to skip it at load time and warn
 
 ## Advanced
 - `claude mcp add --transport http <name> <url>` adds a remote HTTP server; supports `--header "K: V"` (repeatable), `--scope`, `--callback-port`, `--client-id`, `--client-secret`
 - `claude mcp add --transport sse <name> <url>` is deprecated; HTTP transport is preferred
 - `claude mcp add --transport stdio <name> -- <cmd> [args...]` adds a local stdio server; everything before `--` is options, everything after is the command and its args
+- `claude mcp add --transport ws <name> <url>` adds a WebSocket server for remote persistent connections; configured via JSON with `type: "ws"` and `url` field (wss://)
 - `--env KEY=value` is repeatable and must come before the server name; `--scope local|project|user` selects scope
 - `claude mcp add-json <name> '<json>'` accepts a raw server config JSON; supports `--client-secret` for HTTP/SSE OAuth credentials
 - `claude mcp add-from-claude-desktop` imports configured servers from Claude Desktop (macOS / WSL only); duplicate names get numerical suffix
 - `claude mcp serve` runs Claude Code itself as a stdio MCP server so other clients (Claude Desktop, etc.) can use Claude's tools
-- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse", ... } } }`
+- `.mcp.json` schema: `{ "mcpServers": { "<name>": { "type": "stdio|http|sse|ws", ... } } }`
 - stdio entry fields: `command`, `args`, `env`
-- http/sse entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`
+- http/sse/ws entry fields: `type`, `url`, `headers`, `oauth`, `headersHelper`, `alwaysLoad`, `timeout`
+- `timeout` field: per-server hard wall-clock limit in milliseconds (minimum 1000); overrides `MCP_TOOL_TIMEOUT`
 - `oauth` object fields: `clientId`, `clientSecret` (use `--client-secret` flag, not in JSON), `callbackPort`, `authServerMetadataUrl` (v2.1.64+), `scopes` (space-separated string, RFC 6749)
 - Environment variable expansion in `.mcp.json`: `${VAR}` and `${VAR:-default}` work in `command`, `args`, `env`, `url`, `headers`
 - Required env vars without defaults cause config parse failure
-- Scope precedence (highest to lowest): local > project > user > plugin servers > claude.ai connectors
+- Scope precedence (highest to lowest): managedMcpServers (v2.1.259+, organization) > local > project > user > plugin servers > claude.ai connectors
 - Scopes match by name; plugins/connectors match by endpoint (URL or command), so a duplicate endpoint is suppressed
 - Project-scoped servers in `.mcp.json` require user approval before use; reset with `claude mcp reset-project-choices`
 - Plugin-bundled MCP servers live in plugin's `.mcp.json` or inline in `plugin.json`; use `${CLAUDE_PLUGIN_ROOT}` for bundled files and `${CLAUDE_PLUGIN_DATA}` for persistent state

@@ -40,14 +40,13 @@
 - `http` hook headers can interpolate `$VAR` only if the var name is listed in `allowedEnvVars`
 - `mcp_tool` hooks support `${path}` substitution from the hook input JSON; require the MCP server to be already connected
 - `prompt` hooks default to a fast model with 30 s timeout; `agent` hooks default to 60 s
-- Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/pipe-only = exact or pipe-separated list; anything else = JavaScript regex
+- Matcher pattern rules: `*` / `""` / omitted = match all; alphanumeric/underscore/hyphen/space/comma/pipe-only = exact or pipe/comma-separated list; anything else = JavaScript regex
 - `if` field on a handler narrows further within a matcher (e.g., `if: "Bash(git *)"`); only Bash arg-form parsing is fully supported
 - Hook handler options: `type`, `if`, `timeout`, `statusMessage`, `once` (only honored in skill frontmatter), `async`, `asyncRewake`, `command`/`url`/`server`/`tool`/`prompt`
 - Common stdin fields on every event: `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`; subagent context adds `agent_id`, `agent_type`
 - Exit code 2 supported (blocking) by: `PreToolUse`, `PermissionRequest`, `UserPromptSubmit`, `UserPromptExpansion`, `Stop`, `SubagentStop`, `TeammateIdle`, `TaskCreated`, `TaskCompleted`, `ConfigChange` (except `policy_settings`), `PostToolBatch`, `PreCompact`, `WorktreeCreate`
-- `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` / `ask` / `defer` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > defer > ask > allow`
+- `PreToolUse` decision: `hookSpecificOutput.permissionDecision` of `allow` / `deny` plus `permissionDecisionReason`; precedence across multiple hooks is `deny > allow`
 - `PreToolUse` and `PermissionRequest` can return `updatedInput` to modify the tool's arguments before execution
-- `defer` permission decision requires Claude Code v2.1.89+ and only works in `-p` mode with a single tool call
 - Top-level JSON output keys: `continue`, `stopReason`, `suppressOutput`, `systemMessage`, `decision`, `reason`, `hookSpecificOutput`
 - `UserPromptSubmit` hooks can return `hookSpecificOutput.sessionTitle` to set the session title
 - `PostToolUse` and `PostToolUseFailure` hooks receive `duration_ms` in their input JSON (tool execution time, excluding permission prompts and PreToolUse hooks)
@@ -75,7 +74,6 @@
 - Use `disableAllHooks: true` in `settings.local.json` to opt out per-developer when project hooks are too noisy
 - Skill-scoped hooks (frontmatter) are best for validation that should only apply while a specific skill is active
 - For destructive command guards, return `permissionDecision: "deny"` with a clear `permissionDecisionReason` instead of just exiting non-zero
-- For permission UX nudges, return `permissionDecision: "ask"` with a reason
 - Use `additionalContext` in `hookSpecificOutput` rather than plain stdout for `SessionStart` / `UserPromptSubmit` to ensure context is reliably attached
 - For long-running side effects, use `async: true` (or `asyncRewake: true` to rewake Claude on completion)
 - Define each conditional separately rather than trying to cram multiple conditions into a single matcher or `if`
@@ -84,7 +82,6 @@
 - Hooks cannot block events that do not support exit code 2: `PostToolUse`, `PostToolUseFailure`, `StopFailure`, `SessionEnd`, `Notification`, `SubagentStart`, `WorktreeRemove`, `PostCompact`, `FileChanged`, `CwdChanged`, `InstructionsLoaded`
 - Hooks cannot block `ConfigChange` matched on `policy_settings` (admin policy supersedes hooks)
 - Hook `permissionDecision: "allow"` does NOT override deny rules in `permissions`; deny still wins
-- `defer` permission decision fails for batches with more than one tool call; only single-tool batches support deferral
 - `FileChanged` matcher is NOT a regex — `*.env` does not match anything; only literal filenames pipe-separated work
 - `if` arg-form parsing is implemented for Bash; for other tools the condition may always match because the argument shape can't be parsed
 - `once: true` is silently ignored in `settings.json` and in agent frontmatter; only skill frontmatter honors it
@@ -94,5 +91,5 @@
 - HTTP hooks cannot block by HTTP status alone; status must be 2xx and the JSON body must carry the decision
 - Top-level `decision` / `reason` fields on `PreToolUse` are deprecated in favor of `hookSpecificOutput.permissionDecision`
 - Hooks cannot change `permissionMode` mid-session; mode is set on the CLI or in settings only
-- Hooks run non-interactively; they cannot prompt the user for input on their own (use `permissionDecision: "ask"` for permission, or rely on the `AskUserQuestion` tool flow elsewhere)
+- Hooks run non-interactively; they cannot prompt the user for input on their own; rely on the `AskUserQuestion` tool flow elsewhere
 - Each hook invocation is isolated; do not assume in-process state persists across firings
