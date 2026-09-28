@@ -18,6 +18,9 @@
 - !`command` blocks execute at skill load time, output replaces placeholder
 - Multi-line variant using ```! fenced code blocks for multiple commands
 - ${CLAUDE_SKILL_DIR} resolves to skill directory path
+- ${CLAUDE_PROJECT_DIR} resolves to project root directory
+- ${CLAUDE_PLUGIN_ROOT} resolves to plugin installation directory (plugin skills only)
+- ${CLAUDE_PLUGIN_DATA} resolves to plugin persistent data directory (plugin skills only)
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
@@ -26,9 +29,11 @@
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
+- disallowed-tools removes specific tools from available pool during skill execution
 - model field overrides active model for skill duration
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
+- background field for context: fork skills controls whether to run in background (default true) or wait for completion
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
 - hooks field scopes hooks to skill lifecycle
 - paths field uses glob patterns to limit auto-invocation to matching files
@@ -73,6 +78,7 @@
 - Do not put commands/, agents/, skills/, hooks/ inside .claude-plugin/ directory
 - Only plugin.json belongs in .claude-plugin/; everything else at plugin root
 - .claude/commands/ still works but skills/ is preferred for new development
+- Do not create skills, commands, or workflow commands in anthropic-skills or claude-ai namespace; they will not load
 - Forked subagent context has no conversation history; write actionable tasks
 - context: fork only makes sense for skills with explicit instructions, not guidelines
 - context: fork skills without actionable task prompt return without meaningful output

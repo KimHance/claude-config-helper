@@ -15,6 +15,7 @@
 - `/init` generates a starting CLAUDE.md by analyzing the codebase; if a file already exists it suggests improvements rather than overwriting
 - `CLAUDE_CODE_NEW_INIT=1` enables an interactive multi-phase `/init` flow that proposes CLAUDE.md, skills, and hooks together
 - `/memory` slash command opens a panel listing all loaded CLAUDE.md / CLAUDE.local.md / rules files
+- Claude Code can read AGENTS.md files as project instructions; by default, AGENTS.md loads when no CLAUDE.md or CLAUDE.local.md exists in the working directory or above it
 
 ## Advanced
 - Managed policy CLAUDE.md locations: macOS `/Library/Application Support/ClaudeCode/CLAUDE.md`, Linux/WSL `/etc/claude-code/CLAUDE.md`, Windows `C:\Program Files\ClaudeCode\CLAUDE.md`
@@ -24,7 +25,9 @@
 - `@path/to/file` import syntax: imported files expand inline at session start, max recursion depth 5
 - Import paths can be relative (resolved against the file containing the import, not cwd) or absolute (`@~/.claude/foo.md` or `@/abs/path.md`)
 - First time Claude Code sees external imports it shows an approval dialog; declining permanently disables those imports
-- `AGENTS.md` is NOT read by Claude Code; if a repo uses AGENTS.md, create a CLAUDE.md that does `@AGENTS.md` and append Claude-specific instructions
+- Claude Code reads AGENTS.md files; by default AGENTS.md loads only when no CLAUDE.md or CLAUDE.local.md exists in the working directory or above it
+- Project instructions setting in `/config` controls which files load: `claude-md-or-agents-md` (default, CLAUDE.md takes precedence), `claude-md-and-agents-md` (both load), `claude-md` (only CLAUDE.md), or `managed-only` (only managed instructions)
+- InstructionsLoaded hook does not fire when AGENTS.md loads directly; it fires normally when AGENTS.md is imported from CLAUDE.md or when CLAUDE.md/rules files load
 - Block-level HTML comments (`<!-- ... -->`) in CLAUDE.md are stripped before injection into context — useful for maintainer notes that should not consume tokens
 - Comments inside code blocks are preserved
 - The Read tool shows comments as-is (they reappear if a CLAUDE.md is read directly)
@@ -54,6 +57,7 @@
 - Use markdown headers and bullets to group related instructions; structured sections are followed more reliably than dense paragraphs
 - Be specific and verifiable: "Use 2-space indentation" beats "format code properly"; "Run `npm test` before committing" beats "test your changes"; "API handlers live in `src/api/handlers/`" beats "keep files organized"
 - Review CLAUDE.md and rules periodically to remove outdated or contradicting instructions; if two rules conflict, Claude may pick arbitrarily
+- Run `/doctor prompt-audit` to check CLAUDE.md, CLAUDE.local.md, AGENTS.md, and rules files for outdated instructions written for older models and for contradictions across files
 - For path-scoped guidance (e.g., rules that apply only inside `src/api/`), prefer `.claude/rules/<topic>.md` with `paths:` frontmatter over a nested CLAUDE.md
 - Use `@path` imports for organization (splitting one CLAUDE.md into themed files), even though imported content still loads at launch
 - Use `CLAUDE.local.md` (gitignored) for personal sandbox URLs / preferred test data / personal worktree notes
@@ -65,7 +69,7 @@
 
 ## Anti-patterns
 - Do not treat CLAUDE.md as enforcement — it is a user message after the system prompt; vague or contradictory instructions get inconsistent behavior
-- Do not put `AGENTS.md` content where Claude Code expects `CLAUDE.md` — Claude Code does not read AGENTS.md; bridge with `@AGENTS.md` import
+- Do not assume you need a `@AGENTS.md` import workaround — Claude Code now reads AGENTS.md directly when no CLAUDE.md exists; use `@AGENTS.md` import only when you want both files to load together or in sessions that cannot read AGENTS.md directly
 - Do not bloat CLAUDE.md past ~200 lines — adherence drops and context cost rises
 - Do not assume `@path` imports reduce context cost — imported content still loads at launch alongside the parent
 - Do not assume nested CLAUDE.md files reload after `/compact` — only the project-root CLAUDE.md is re-injected; nested files come back when Claude next reads matching subdirectory files

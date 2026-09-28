@@ -18,25 +18,34 @@
 
 ## Advanced
 - `/add-dir <path>` — add a working directory for file access during session; most `.claude/` config not loaded from added dirs (skills/ is the exception, and CLAUDE.md only with `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`)
-- `/agents` — manage subagent configurations (Running / Library tabs)
+- `/advisor [model|off]` — enable/disable advisor tool; requires Fable access for `fable` model
+- `/autocompact [auto|<tokens>]` — set auto-compact window size; optional `auto` or token count (v2.1.221+)
 - `/autofix-pr [prompt]` — spawn a Claude Code on the web session that watches the PR for the current branch and pushes fixes; requires `gh` CLI
+- `/auto-mode-setup` — draft `autoMode.environment` entries conversationally (v2.1.228+; Pro/Max/Team plans)
 - `/batch <instruction>` — bundled Skill; orchestrates large-scale parallel changes across the codebase via worktree-isolated background agents
+- `/background [prompt]` (alias `/bg`) — detach session as background agent with optional final instruction; monitor with `claude agents`
 - `/branch [name]` (alias `/fork`) — branch the current conversation; `/fork` becomes a forked-subagent spawn when `CLAUDE_CODE_FORK_SUBAGENT=1`; success message includes the new branch's session ID for `/resume`
-- `/btw <question>` — quick side question that doesn't add to the conversation history
+- `/btw [question]` — quick side question that doesn't add to the conversation history (v2.1.212+: question optional)
+- `/cd <path>` — move session to new directory for file access
 - `/chrome` — configure Claude in Chrome integration
-- `/claude-api [migrate|managed-agents-onboard]` — bundled Skill; loads Claude API reference for the project's language; `migrate` upgrades existing API code to a newer model
+- `/claude-api [migrate|upgrade|managed-agents-onboard|prompt-audit|cost-optimize|build-eval|hillclimb]` — bundled Skill; loads Claude API reference for the project's language; `migrate` upgrades existing API code to newer model, `upgrade` moves SDK to major version, `managed-agents-onboard` creates new Managed Agent, `prompt-audit` flags outdated instructions, `cost-optimize` profiles spend, `build-eval`/`hillclimb` build/improve evals
 - `/clear [name]` (aliases `/reset`, `/new`) — start a new conversation; previous one stays in `/resume`; pass a name to label the previous conversation in the `/resume` picker
 - `/color [color|default]` — set prompt-bar color (`red`/`blue`/`green`/`yellow`/`purple`/`orange`/`pink`/`cyan`); use `default` to reset, or run with no argument to pick a random color; syncs to claude.ai/code under Remote Control
 - `/compact [instructions]` — summarize conversation to free context; optional focus instructions
-- `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.)
+- `/config` (alias `/settings`) — open Settings UI (theme, model, output style, etc.); or set values directly with optional `key=value` pairs
 - `/context` — visualize context window usage
 - `/copy [N]` — copy assistant response (Nth-latest) to clipboard; press `w` to save to file
 - `/cost` — alias for `/usage`
+- `/dataviz [request]` — bundled Skill; design guidance for charts/graphs; validates for colorblind safety
 - `/debug [description]` — bundled Skill; enable debug logging for the session and analyze the debug log
+- `/deep-research <question>` — bundled Workflow; fan out web searches and synthesize report (v2.1.218+)
+- `/design [brief]` — bundled Skill; draft UI mockups as artboards; exports as PNG/PDF (v2.1.265+)
+- `/design-login` — authorize design-system access for `/design-sync`
+- `/design-sync [hint]` — bundled Skill; upload React design system to Claude Design; optional design system name
 - `/desktop` (alias `/app`) — continue session in Claude Code Desktop app (macOS/Windows)
 - `/diff` — interactive diff viewer for uncommitted changes and per-turn diffs
-- `/doctor` — diagnose Claude Code install/settings; press `f` to have Claude fix issues
-- `/effort [level|auto]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately; without an argument, opens an interactive slider
+- `/doctor [prompt-audit [path]]` — diagnose Claude Code install/settings; press `f` to have Claude fix issues; `prompt-audit` subcommand audits CLAUDE.md files and skills (v2.1.283+)
+- `/effort [level|auto|status]` — set model effort level (`low`/`medium`/`high`/`xhigh`/`max`); takes effect immediately; without an argument, opens an interactive slider; includes `status` option
 - `/exit` (alias `/quit`) — exit CLI
 - `/export [filename]` — export conversation as plain text
 - `/extra-usage` — configure extra usage to keep working past rate limits
@@ -44,15 +53,18 @@
 - `/feedback [report]` (alias `/bug`) — submit feedback
 - `/fewer-permission-prompts` — bundled Skill; scans transcripts and adds an allowlist to project settings
 - `/focus` — toggle focus view (last prompt + tool summary + final response); fullscreen-only; persists per `viewMode`
+- `/goal [condition|clear]` — set a goal for Claude to work toward or clear it
 - `/heapdump` — write JS heap snapshot to `~/Desktop` for diagnosing memory issues
 - `/help` — show help and available commands
 - `/hooks` — view hook configurations
 - `/ide` — manage IDE integrations
+- `/import [source] [--dry-run] [--yes]` — import config from other tools (`codex`/`gemini`/`cursor`); optional `--dry-run` to preview, `--yes` to skip confirmation (v2.1.213+)
 - `/init` — initialize project with CLAUDE.md guide; `CLAUDE_CODE_NEW_INIT=1` enables interactive multi-phase flow (skills + hooks + memory)
 - `/insights` — generate a usage report (project areas, interaction patterns, friction points)
 - `/install-github-app` — set up Claude GitHub Actions app for a repo
 - `/install-slack-app` — install Claude Slack app
 - `/keybindings` — open or create keybindings configuration
+- `/list-agents` / `/peers` — list subagents, team members, and sessions; requires cross-session messaging enabled (v2.1.224+)
 - `/login` / `/logout` — Anthropic account auth
 - `/loop [interval] [prompt]` (aliases `/proactive`) — bundled Skill; run a prompt repeatedly; without interval Claude self-paces; without prompt runs autonomous maintenance or `.claude/loop.md`
 - `/mcp` — manage MCP server connections and OAuth; shows tool count for connected servers
@@ -74,7 +86,7 @@
 - `/remote-env` — configure default remote env for `--remote` web sessions
 - `/rename [name]` — rename session; auto-generates name if no arg
 - `/resume [session]` (alias `/continue`) — resume conversation by ID/name; finds sessions that created a PR via PR URL pasting (GitHub, GitHub Enterprise, GitLab, Bitbucket); offers to summarize stale, large sessions before re-reading
-- `/review [PR]` — review a PR locally; `/ultrareview` is the cloud variant
+- `/review [PR]` — review a PR locally (alias: `/code-review`); `/ultrareview` is the cloud variant
 - `/rewind` (aliases `/checkpoint`, `/undo`) — rewind conversation/code or summarize from a selected message
 - `/sandbox` — toggle sandbox mode (supported platforms only)
 - `/schedule [description]` (alias `/routines`) — create/list/run routines; conversational setup
@@ -87,6 +99,7 @@
 - `/status` — open Settings UI on Status tab; usable while Claude is responding
 - `/statusline` — configure status line; auto-configures from shell prompt without args
 - `/stickers` — order Claude Code stickers
+- `/subtask` — hand side task to subagent; results return to main conversation
 - `/tasks` (alias `/bashes`) — list/manage background tasks
 - `/team-onboarding` — generate team onboarding guide from past 30 days of usage
 - `/teleport` (alias `/tp`) — pull a Claude Code web session into this terminal (claude.ai subscription required)
@@ -97,6 +110,7 @@
 - `/ultrareview [PR]` — deep multi-agent cloud review (Pro/Max free runs through 2026-05-05, then extra usage)
 - `/upgrade` — open upgrade page
 - `/usage` — show session cost, plan limits, activity stats
+- `/verify` — bundled Skill; verify that a code change actually does what it's supposed to by exercising it end-to-end (v2.1.215+)
 - `/vim` — **Removed in v2.1.92**; toggle Vim editor mode via `/config → Editor mode`
 - `/voice [hold|tap|off]` — toggle voice dictation (claude.ai account required)
 - `/web-setup` — connect GitHub to Claude Code on the web via local `gh` CLI
@@ -117,6 +131,7 @@
 - Use `/heapdump` and `/doctor` first when diagnosing local Claude Code issues before opening a feedback report
 
 ## Anti-patterns
+- Do not use `/agents` — removed in v2.1.281; typing it explains where the command went
 - Do not use `/pr-comments` — removed in v2.1.91; ask Claude directly with the `gh` CLI present
 - Do not use `/vim` — removed in v2.1.92; toggle the Vim editor mode through `/config → Editor mode`
 - Do not assume every command listed in the docs is available — availability depends on platform, plan, and env vars; `/upgrade`, `/desktop`, `/setup-bedrock`, `/setup-vertex`, `/passes`, `/privacy-settings` only show conditionally

@@ -49,6 +49,7 @@
 - Use a clear, unique `name` in `plugin.json` — it doubles as the skill namespace (`/<name>:<skill>`)
 - Set an explicit `version` in `plugin.json` rather than relying on git SHA so users get coherent update bumps
 - Use `${CLAUDE_PLUGIN_ROOT}` for any path inside the plugin (skill scripts, MCP server commands, hook scripts) so the plugin works regardless of install location
+- Quote `${CLAUDE_PLUGIN_ROOT}` when used in shell-form hooks to handle plugin paths with spaces correctly
 - Use `${CLAUDE_PLUGIN_DATA}` for persistent state that should survive plugin updates
 - Test with `--plugin-dir ./local-copy` while iterating; reload with `/reload-plugins` instead of restarting
 - For team-internal plugins, host the marketplace in a private repo and add via `extraKnownMarketplaces`
@@ -70,6 +71,7 @@
 - Do not load a plugin from `--plugin-url` you don't trust — Claude Code fetches the archive and runs its hooks/scripts
 - Do not put settings keys other than `agent` / `subagentStatusLine` in plugin `settings.json` — unknown keys are silently ignored
 - Do not assume hooks defined in a plugin work when `allowManagedHooksOnly: true` is set — only managed hooks and force-enabled plugin hooks are loaded in that case
+- Do not leave `${CLAUDE_PLUGIN_ROOT}` unquoted in shell-form hooks — it breaks on plugin paths with spaces
 - Do not modify `.claude-plugin/plugin.json` mid-session expecting changes to apply automatically — run `/reload-plugins` after edits
 - Do not skip the `description` field in `plugin.json` — it is shown in the plugin manager and helps users decide whether to install
 - Do not assume installing a plugin auto-trusts it — the trust dialog must be accepted before the plugin's components activate
