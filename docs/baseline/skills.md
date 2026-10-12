@@ -21,6 +21,8 @@
 - $ARGUMENTS, $ARGUMENTS[N], $N for argument substitution
 - ${CLAUDE_SESSION_ID} provides session identifier for logging/correlation
 - ${CLAUDE_EFFORT} provides current effort level (low/medium/high/xhigh/max)
+- !`command` blocks containing raw control characters other than tab and newline are refused (v2.1.290)
+- skill name longer than 256 characters is ignored (v2.1.292)
 
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
