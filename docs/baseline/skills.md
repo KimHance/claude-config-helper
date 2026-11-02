@@ -25,12 +25,12 @@
 ## Advanced
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
-- allowed-tools pre-approves tool list for permission bypass during skill execution
-- model field overrides active model for skill duration
-- effort field overrides session effort level
+- allowed-tools pre-approves tool list for permission bypass for the invoking turn only
+- model field overrides active model for the rest of the current turn
+- effort field overrides session effort level for the current turn
 - context: fork runs skill in isolated subagent context
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
-- hooks field scopes hooks to skill lifecycle
+- hooks field registers hooks on invoke, active for the session
 - paths field uses glob patterns to limit auto-invocation to matching files
 - shell field sets shell to bash (default) or powershell for !`command` execution
 - Skills can include supporting files (template.md, examples/, scripts/)
