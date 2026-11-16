@@ -51,6 +51,8 @@
 - skillOverrides setting controls visibility (on/name-only/user-invocable-only/off)
 - /skills command shows available skills with visibility status
 - disableSkillShellExecution policy disables !`command` execution for user/project/plugin sources
+- Skill(name) in permissions.allow lets scheduled tasks and /loop run a skill declaring allowed-tools or hooks unattended; otherwise Claude asks first
+- With the Bash sandbox on, .claude/skills/ folders in subdirectories below the starting folder load only if Claude Code was started there or /cd there
 
 ## Recommended
 - description should put key use case first to fit within character budget
