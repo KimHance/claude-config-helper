@@ -26,7 +26,7 @@
 - disable-model-invocation: true prevents Claude from auto-loading, user-only invocation
 - user-invocable: false hides from / menu, Claude-only invocation
 - allowed-tools pre-approves tool list for permission bypass during skill execution
-- model field overrides active model for skill duration
+- model field overrides active model for the rest of the current turn
 - effort field overrides session effort level
 - context: fork runs skill in isolated subagent context
 - agent field specifies subagent type (Explore, Plan, general-purpose, custom)
